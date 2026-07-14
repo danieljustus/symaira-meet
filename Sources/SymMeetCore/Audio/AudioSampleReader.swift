@@ -84,7 +84,7 @@ private final class AudioSampleReaderWorker: @unchecked Sendable {
     var inputEnded = false
     var outputPosition: AVAudioFramePosition = 0
 
-    while !inputEnded || file.framePosition < file.length {
+    while true {
       try Task.checkCancellation()
       guard
         let outputBuffer = AVAudioPCMBuffer(
