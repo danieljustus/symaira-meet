@@ -38,15 +38,19 @@ final class TranscribeCommandTests: XCTestCase {
   }
 
   func testTranscribeMissingModelReportsInstallCommand() throws {
+    // "large-v3-v20240930_626MB" is a real catalog entry that is never
+    // installed in this test's isolated XDG roots, exercising the
+    // modelNotInstalled path (as opposed to an unrecognized catalog ID).
+    let modelID = "large-v3-v20240930_626MB"
     let dummy = root.appending(path: "test.wav")
     try Data(count: 100).write(to: dummy)
-    let result = try runCLI(["transcribe", dummy.path, "--model", "nonexistent", "--json"])
+    let result = try runCLI(["transcribe", dummy.path, "--model", modelID, "--json"])
     XCTAssertEqual(result.status, 1)
     XCTAssertTrue(
       result.stderr.contains("not installed"),
       "must report model not installed: \(result.stderr)")
     XCTAssertTrue(
-      result.stderr.contains("symmeet model install nonexistent"),
+      result.stderr.contains("symmeet model install \(modelID)"),
       "must suggest install command: \(result.stderr)")
     XCTAssertEqual(result.stdout, "")
   }
@@ -80,7 +84,7 @@ final class TranscribeCommandTests: XCTestCase {
     XCTAssertEqual(jobs?.count, 1)
     XCTAssertEqual(
       jobs?.first?["meeting_id"] as? String,
-      meetingID.uuidString.lowercased())
+      meetingID.uuidString)
     XCTAssertEqual(result.stderr, "")
   }
 
@@ -90,11 +94,13 @@ final class TranscribeCommandTests: XCTestCase {
     let meetingID = UUID()
     let job = try await coordinator.enqueue(meetingID: meetingID)
 
+    // Lowercase input must still resolve (case-insensitive UUID lookup); the
+    // JSON contract itself preserves UUID.uuidString's own casing.
     let id = meetingID.uuidString.lowercased()
     let result = try runCLI(["job", "show", id, "--json"])
     XCTAssertEqual(result.status, 0)
     let json = try XCTUnwrap(jsonObject(result.stdout) as? [String: Any])
-    XCTAssertEqual(json["meeting_id"] as? String, id)
+    XCTAssertEqual(json["meeting_id"] as? String, meetingID.uuidString)
     XCTAssertEqual(json["status"] as? String, "queued")
     XCTAssertEqual(result.stderr, "")
   }
@@ -146,7 +152,7 @@ final class TranscribeCommandTests: XCTestCase {
     let json = try XCTUnwrap(jsonObject(result.stdout) as? [String: Any])
     let jobs = json["jobs"] as? [[String: Any]]
     XCTAssertEqual(jobs?.count, 1)
-    XCTAssertEqual(jobs?.first?["meeting_id"] as? String, meeting2.uuidString.lowercased())
+    XCTAssertEqual(jobs?.first?["meeting_id"] as? String, meeting2.uuidString)
     XCTAssertEqual(result.stderr, "")
   }
 

@@ -40,6 +40,7 @@ public enum JobStatus: String, Codable, CaseIterable, Equatable, Sendable {
 ///
 /// ```text
 /// queued -> preparing -> transcribing -> exporting -> succeeded
+///        -> cancelled                (no in-flight write to wait for)
 ///                     -> failed
 ///                     -> cancelling -> cancelled
 /// failed | cancelled | interrupted -> queued   (explicit retry/resume only)
@@ -50,6 +51,7 @@ public enum JobStateMachine {
   /// The exhaustive set of allowed `(from, to)` transitions.
   public static let allowedTransitions: Set<Transition> = [
     Transition(.queued, .preparing),
+    Transition(.queued, .cancelled),
 
     Transition(.preparing, .transcribing),
     Transition(.preparing, .failed),

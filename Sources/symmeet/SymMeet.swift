@@ -20,14 +20,24 @@ struct SymMeet: AsyncParsableCommand {
       } else {
         try command.run()
       }
-    } catch let error as CleanExit {
-      Self.exit(withError: error)
     } catch let error as CLIError {
       Output.writeError(error.message)
       Darwin.exit(error.exitCode)
     } catch {
-      Output.writeError("Usage error: \(error)")
-      Darwin.exit(CLIExit.usage.rawValue)
+      // Covers CleanExit (--help/--version, always a clean exit) and
+      // ParserError (usage mistakes, e.g. --help also surfaces as
+      // .helpRequested here and must still exit cleanly). Message text comes
+      // from ArgumentParser's own formatter; the usage exit code stays this
+      // project's convention (CLIExit.usage) rather than ArgumentParser's
+      // EX_USAGE default.
+      let text = Self.fullMessage(for: error)
+      if Self.exitCode(for: error).isSuccess {
+        if !text.isEmpty { print(text) }
+        Darwin.exit(CLIExit.success.rawValue)
+      } else {
+        if !text.isEmpty { Output.writeError(text) }
+        Darwin.exit(CLIExit.usage.rawValue)
+      }
     }
   }
 }

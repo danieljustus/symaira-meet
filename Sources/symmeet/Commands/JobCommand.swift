@@ -13,7 +13,8 @@ extension SymMeet {
   }
 
   struct JobList: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "List transcription jobs.")
+    static let configuration = CommandConfiguration(
+      commandName: "list", abstract: "List transcription jobs.")
 
     @Option(name: .long, help: "Filter by job status.")
     var state: String?
@@ -56,7 +57,8 @@ extension SymMeet {
   }
 
   struct JobShow: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "Show one transcription job.")
+    static let configuration = CommandConfiguration(
+      commandName: "show", abstract: "Show one transcription job.")
 
     @Argument(help: "The meeting UUID or job UUID.")
     var jobID: String
@@ -96,6 +98,7 @@ extension SymMeet {
 
   struct JobCancel: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
+      commandName: "cancel",
       abstract: "Request cooperative cancellation of a transcription job.")
 
     @Argument(help: "The meeting UUID or job UUID.")
@@ -110,7 +113,7 @@ extension SymMeet {
         let coordinator = JobCoordinator(dataRoot: paths.dataDirectory)
         let job = try await resolveJob(coordinator: coordinator, identifier: jobID)
 
-        guard job.status.isActive else {
+        guard job.status == .queued || job.status.isActive else {
           let message = "Job is already in terminal state: \(job.status.rawValue)."
           if json {
             try Output.writeJSON(
@@ -125,8 +128,15 @@ extension SymMeet {
         }
 
         let handle = try await coordinator.lock.acquire(meetingID: job.meetingID)
-        _ = try await coordinator.requestCancellation(meetingID: job.meetingID, using: handle)
-        _ = try await coordinator.confirmCancelled(meetingID: job.meetingID, using: handle)
+        if job.status == .queued {
+          // No in-flight write to wait for: cancel immediately.
+          _ = try await coordinator.advance(
+            meetingID: job.meetingID, to: .cancelled, using: handle,
+            note: "cancelled before starting")
+        } else {
+          _ = try await coordinator.requestCancellation(meetingID: job.meetingID, using: handle)
+          _ = try await coordinator.confirmCancelled(meetingID: job.meetingID, using: handle)
+        }
 
         if json {
           try Output.writeJSON(
@@ -145,6 +155,7 @@ extension SymMeet {
 
   struct JobRetry: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
+      commandName: "retry",
       abstract: "Retry a failed, cancelled, or interrupted transcription job.")
 
     @Argument(help: "The meeting UUID or job UUID.")
