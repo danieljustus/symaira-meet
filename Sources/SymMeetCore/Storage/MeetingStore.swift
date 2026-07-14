@@ -124,6 +124,52 @@ public actor MeetingStore {
     }
   }
 
+  /// Appends one finalized segment to the meeting's `segments.raw.jsonl`
+  /// evidence file. Engine output is immutable evidence, so this file is
+  /// append-only -- callers that need to avoid persisting the same segment
+  /// twice across a retry must dedupe before calling this (see
+  /// ``SegmentAccumulator``).
+  public func appendRawSegment(_ segment: Segment, meetingID: String) throws {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+
+    let segmentsURL = layout.rawSegmentsURL(in: directory)
+    try requireSafePath(segmentsURL)
+    let existing = (try? Data(contentsOf: segmentsURL)) ?? Data()
+
+    do {
+      let segmentData = try ContractCodec.encoder().encode(segment)
+      var updated = existing
+      updated.append(segmentData)
+      updated.append(0x0A)
+      try AtomicFileWriter.write(updated, to: segmentsURL)
+    } catch {
+      throw error is StoreError ? error : StoreError.operationFailed
+    }
+  }
+
+  /// Reads back every segment already finalized in `segments.raw.jsonl`, in
+  /// the order they were written. Used to seed ``SegmentAccumulator`` before
+  /// a retry so already-finalized time ranges are never persisted twice.
+  public func rawSegments(meetingID: String) throws -> [Segment] {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+
+    let segmentsURL = layout.rawSegmentsURL(in: directory)
+    try requireSafePath(segmentsURL)
+    guard let data = try? Data(contentsOf: segmentsURL), !data.isEmpty else { return [] }
+
+    do {
+      return try data.split(separator: 0x0A).map {
+        try ContractCodec.decoder().decode(Segment.self, from: Data($0))
+      }
+    } catch {
+      throw StoreError.malformedArtifact
+    }
+  }
+
   /// Returns the derived files eligible for a retention cleanup after validating
   /// that every path remains under the configured data root.
   public func derivedArtifactURLs(meetingID: String) throws -> [URL] {
