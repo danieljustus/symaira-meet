@@ -1,4 +1,4 @@
-import ArgumentParser
+@preconcurrency import ArgumentParser
 import Darwin
 
 @main
@@ -11,7 +11,7 @@ struct SymMeet: AsyncParsableCommand {
 
   static func main() async {
     do {
-      var command = try await asyncParseAsRoot()
+      var command = try parseAsRoot()
       if var asyncCommand = command as? any AsyncParsableCommand {
         try await asyncCommand.run()
       } else {
