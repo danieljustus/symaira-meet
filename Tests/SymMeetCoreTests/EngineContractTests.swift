@@ -69,7 +69,8 @@ final class EngineContractTests: XCTestCase {
     try await Task.sleep(for: .milliseconds(10))
     XCTAssertFalse(task.isCancelled)
     await engine.resume()
-    XCTAssertEqual(try await task.value.last?.type, .completed)
+    let completedEventType = try await task.value.last?.type
+    XCTAssertEqual(completedEventType, .completed)
 
     await engine.setOutcome(.fail)
     let failingSamples = AsyncThrowingStream<AudioSampleChunk, Error> { continuation in
