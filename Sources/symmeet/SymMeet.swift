@@ -6,7 +6,9 @@ struct SymMeet: AsyncParsableCommand {
   static let configuration = CommandConfiguration(
     commandName: "symmeet",
     abstract: "Local-first meeting artifacts and processing.",
-    subcommands: [Version.self, Doctor.self, Configuration.self, Meeting.self, Completion.self]
+    subcommands: [
+      Version.self, Doctor.self, Configuration.self, Meeting.self, Model.self, Completion.self,
+    ]
   )
 
   static func main() async {

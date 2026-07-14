@@ -1,5 +1,6 @@
 import Foundation
 import SymMeetCore
+import SymMeetWhisperKit
 
 enum CLIExit: Int32 {
   case success = 0
@@ -15,6 +16,20 @@ struct CLIError: Error {
 
   static func from(_ error: Error) -> CLIError {
     if let error = error as? CLIError { return error }
+    if let error = error as? ModelError {
+      switch error {
+      case .invalidIdentifier, .unknownModel:
+        return CLIError(exitCode: CLIExit.usage.rawValue, message: error.localizedDescription)
+      case .modelNotInstalled, .corruptModel, .incompatibleModel, .inUse, .invalidSource,
+        .operationFailed:
+        return CLIError(
+          exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
+      }
+    }
+    if let error = error as? WhisperKitEngineError {
+      return CLIError(
+        exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
+    }
     guard let storeError = error as? StoreError else {
       return CLIError(exitCode: CLIExit.runtimeFailure.rawValue, message: "Command failed.")
     }
