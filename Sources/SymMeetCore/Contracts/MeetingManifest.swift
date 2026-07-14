@@ -130,6 +130,7 @@ public struct MeetingManifest: Codable, Equatable, Sendable {
   public let createdAt: Date
   public let updatedAt: Date
   public let originalAsset: String?
+  public let originalAssetMetadata: SourceAssetMetadata?
   public let audioTracks: [AudioTrack]
   public let language: String?
   public var job: MeetingJob?
@@ -143,6 +144,7 @@ public struct MeetingManifest: Codable, Equatable, Sendable {
     createdAt: Date,
     updatedAt: Date,
     originalAsset: String? = nil,
+    originalAssetMetadata: SourceAssetMetadata? = nil,
     audioTracks: [AudioTrack] = [],
     language: String? = nil,
     job: MeetingJob? = nil,
@@ -156,6 +158,7 @@ public struct MeetingManifest: Codable, Equatable, Sendable {
     self.createdAt = createdAt
     self.updatedAt = updatedAt
     self.originalAsset = originalAsset
+    self.originalAssetMetadata = originalAssetMetadata
     self.audioTracks = audioTracks
     self.language = language
     self.job = job
@@ -171,6 +174,7 @@ public struct MeetingManifest: Codable, Equatable, Sendable {
     case createdAt = "created_at"
     case updatedAt = "updated_at"
     case originalAsset = "original_asset"
+    case originalAssetMetadata = "original_asset_metadata"
     case audioTracks = "audio_tracks"
     case language
     case job
@@ -191,6 +195,8 @@ public struct MeetingManifest: Codable, Equatable, Sendable {
     createdAt = try container.decode(Date.self, forKey: .createdAt)
     updatedAt = try container.decode(Date.self, forKey: .updatedAt)
     originalAsset = try container.decodeIfPresent(String.self, forKey: .originalAsset)
+    originalAssetMetadata = try container.decodeIfPresent(
+      SourceAssetMetadata.self, forKey: .originalAssetMetadata)
     audioTracks = try container.decodeIfPresent([AudioTrack].self, forKey: .audioTracks) ?? []
     language = try container.decodeIfPresent(String.self, forKey: .language)
     job = try container.decodeIfPresent(MeetingJob.self, forKey: .job)
@@ -213,6 +219,7 @@ public struct MeetingManifest: Codable, Equatable, Sendable {
     try container.encode(createdAt, forKey: .createdAt)
     try container.encode(updatedAt, forKey: .updatedAt)
     try container.encodeIfPresent(originalAsset, forKey: .originalAsset)
+    try container.encodeIfPresent(originalAssetMetadata, forKey: .originalAssetMetadata)
     try container.encode(audioTracks, forKey: .audioTracks)
     try container.encodeIfPresent(language, forKey: .language)
     try container.encodeIfPresent(job, forKey: .job)
