@@ -86,4 +86,24 @@ final class EngineContractTests: XCTestCase {
       XCTAssertEqual(error, .requestedFailure)
     }
   }
+
+  func testFakeEngineCancelsCooperativelyWithoutCompleting() async throws {
+    let engine = FakeTranscriptionEngine()
+    await engine.setOutcome(.cancel)
+    let samples = AsyncThrowingStream<AudioSampleChunk, Error> { continuation in
+      continuation.yield(AudioSampleChunk(samples: [0], startMS: 0, endMS: 1))
+      continuation.finish()
+    }
+    let request = TranscriptionRequest(
+      audio: samples, trackID: UUID(), modelID: "tiny", language: nil, sourceDurationMS: 1)
+
+    var events: [TranscriptionEvent] = []
+    for try await event in await engine.transcribe(request) {
+      events.append(event)
+    }
+
+    XCTAssertEqual(events.last?.phase, .cancelled)
+    XCTAssertFalse(events.contains { $0.type == .completed })
+    XCTAssertFalse(events.contains { $0.type == .finalizedSegment })
+  }
 }
