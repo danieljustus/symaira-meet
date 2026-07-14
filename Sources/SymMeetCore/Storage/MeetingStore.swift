@@ -31,7 +31,22 @@ public actor MeetingStore {
 
   public func load(meetingID: String) throws -> MeetingManifest {
     let normalizedID = try normalizedMeetingID(meetingID)
-    let directory = layout.meetingDirectory(normalizedID)
+    return try loadManifest(
+      normalizedID: normalizedID, directory: layout.meetingDirectory(normalizedID))
+  }
+
+  /// Loads a manifest for a meeting currently sitting in local trash. Mirrors
+  /// ``load(meetingID:)`` but reads from the trash directory instead of the
+  /// active meetings directory -- used by callers (like `symmeet export`)
+  /// that need to recognize and clearly report a trashed meeting rather than
+  /// surfacing the same generic "missing" error a never-existed meeting would.
+  public func loadTrashed(meetingID: String) throws -> MeetingManifest {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    return try loadManifest(
+      normalizedID: normalizedID, directory: layout.trashedMeetingDirectory(normalizedID))
+  }
+
+  private func loadManifest(normalizedID: String, directory: URL) throws -> MeetingManifest {
     try requireExistingSafeDirectory(directory)
 
     let manifestURL = layout.manifestURL(in: directory)
@@ -155,11 +170,40 @@ public actor MeetingStore {
   public func rawSegments(meetingID: String) throws -> [Segment] {
     let normalizedID = try normalizedMeetingID(meetingID)
     let directory = layout.meetingDirectory(normalizedID)
-    try requireExistingSafeDirectory(directory)
+    return try segmentsJSONL(at: layout.rawSegmentsURL(in: directory), in: directory)
+  }
 
-    let segmentsURL = layout.rawSegmentsURL(in: directory)
-    try requireSafePath(segmentsURL)
-    guard let data = try? Data(contentsOf: segmentsURL), !data.isEmpty else { return [] }
+  /// Reads back every segment recorded in `segments.edited.jsonl` -- the
+  /// user-authored overlay a caller (like `symmeet export`) prefers over raw
+  /// engine evidence when one exists. Returns an empty array both when the
+  /// file is absent and when it exists but has never been written to, since
+  /// there is currently no writer for this file anywhere in the codebase.
+  public func editedSegments(meetingID: String) throws -> [Segment] {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    return try segmentsJSONL(at: layout.editedSegmentsURL(in: directory), in: directory)
+  }
+
+  /// Mirrors ``rawSegments(meetingID:)`` for a meeting currently in local
+  /// trash.
+  public func rawSegments(trashedMeetingID meetingID: String) throws -> [Segment] {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.trashedMeetingDirectory(normalizedID)
+    return try segmentsJSONL(at: layout.rawSegmentsURL(in: directory), in: directory)
+  }
+
+  /// Mirrors ``editedSegments(meetingID:)`` for a meeting currently in local
+  /// trash.
+  public func editedSegments(trashedMeetingID meetingID: String) throws -> [Segment] {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.trashedMeetingDirectory(normalizedID)
+    return try segmentsJSONL(at: layout.editedSegmentsURL(in: directory), in: directory)
+  }
+
+  private func segmentsJSONL(at url: URL, in directory: URL) throws -> [Segment] {
+    try requireExistingSafeDirectory(directory)
+    try requireSafePath(url)
+    guard let data = try? Data(contentsOf: url), !data.isEmpty else { return [] }
 
     do {
       return try data.split(separator: 0x0A).map {

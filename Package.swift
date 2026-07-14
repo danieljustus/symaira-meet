@@ -42,7 +42,7 @@ let package = Package(
       path: "Tests",
       exclude: ["SymMeetCLITests", "SymMeetMCPTests", "SymMeetWhisperKitTests"],
       sources: ["Support/FakeTranscriptionEngine.swift", "SymMeetCoreTests"],
-      resources: [.copy("Fixtures/contracts")]
+      resources: [.copy("Fixtures/contracts"), .copy("Fixtures/exports")]
     ),
     .testTarget(name: "SymMeetMCPTests", dependencies: ["SymMeetMCP"]),
     .testTarget(name: "SymMeetCLITests", dependencies: ["SymMeetCore"]),

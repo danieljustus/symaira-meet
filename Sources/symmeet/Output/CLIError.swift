@@ -16,6 +16,9 @@ struct CLIError: Error {
 
   static func from(_ error: Error) -> CLIError {
     if let error = error as? CLIError { return error }
+    if let error = error as? ExportError {
+      return CLIError(exitCode: CLIExit.usage.rawValue, message: error.localizedDescription)
+    }
     if let error = error as? ModelError {
       switch error {
       case .invalidIdentifier, .unknownModel:

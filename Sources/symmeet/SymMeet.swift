@@ -8,7 +8,7 @@ struct SymMeet: AsyncParsableCommand {
     abstract: "Local-first meeting artifacts and processing.",
     subcommands: [
       Version.self, Doctor.self, Configuration.self, Meeting.self, Model.self,
-      Transcribe.self, Job.self, Completion.self,
+      Transcribe.self, Job.self, Export.self, Completion.self,
     ]
   )
 
