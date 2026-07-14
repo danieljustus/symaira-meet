@@ -17,9 +17,29 @@ make lint
 .build/debug/symmeet --help
 ```
 
-The binary is named `symmeet`. The initial command tree provides `--help` and a
-placeholder `version` command; stable machine-readable commands are documented
-as they become available.
+The binary is named `symmeet`. Every `--json` command writes exactly one
+snake_case JSON document to stdout; diagnostics stay on stderr.
+
+## CLI
+
+```text
+symmeet version [--json]
+symmeet doctor [--json]
+symmeet config path [--json]
+symmeet meeting list [--json]
+symmeet meeting show <meeting_id> [--json]
+symmeet meeting trash <meeting_id> [--json]
+symmeet meeting restore <meeting_id> [--json]
+symmeet completion <bash|fish|zsh>
+```
+
+Exit codes: `0` success, `1` runtime failure, `2` invalid input or
+configuration, `3` permission denied, and `4` unsupported operation. The
+stable `version --json` handshake is:
+
+```json
+{"tool":"symmeet","version":"...","schema_version":1}
+```
 
 ## Design principles
 
