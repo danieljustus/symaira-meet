@@ -18,7 +18,8 @@ final class ModelStoreTests: XCTestCase {
 
     let published = try await store.publish("tiny", from: source, sha256: "abc")
     XCTAssertEqual(published.status, .installed)
-    XCTAssertEqual(try await store.verify(id: "tiny").sha256, "abc")
+    let verified = try await store.verify(id: "tiny")
+    XCTAssertEqual(verified.sha256, "abc")
     XCTAssertTrue(
       FileManager.default.fileExists(atPath: root.appending(path: "models/tiny/model.json").path))
 
@@ -30,7 +31,8 @@ final class ModelStoreTests: XCTestCase {
       XCTAssertEqual(error, .inUse)
     }
     try await store.markAvailable("tiny")
-    XCTAssertTrue(try await store.remove(id: "tiny"))
+    let removed = try await store.remove(id: "tiny")
+    XCTAssertTrue(removed)
   }
 
   func testDownloadingAndCorruptStatesAreVisible() async throws {
@@ -38,8 +40,8 @@ final class ModelStoreTests: XCTestCase {
     defer { try? FileManager.default.removeItem(at: root) }
     let store = ModelStore(root: root.appending(path: "models"))
     _ = try await store.prepareDownload(for: "tiny")
-    XCTAssertEqual(
-      try await store.list().first { $0.descriptor.id == "tiny" }?.status, .downloading)
+    let downloading = try await store.list().first { $0.descriptor.id == "tiny" }?.status
+    XCTAssertEqual(downloading, .downloading)
 
     let corrupt = root.appending(path: "models/large-v3-v20240930_626MB")
     try FileManager.default.createDirectory(at: corrupt, withIntermediateDirectories: true)
