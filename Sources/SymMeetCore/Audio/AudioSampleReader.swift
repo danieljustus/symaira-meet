@@ -79,8 +79,8 @@ private final class AudioSampleReaderWorker: @unchecked Sendable {
     let inputCapacity = max(
       AVAudioFrameCount(1024),
       AVAudioFrameCount(
-        (Double(outputChunkFrames) * inputFormat.sampleRate / AudioSampleReader.outputSampleRate * 2)
-          .rounded()))
+        (Double(outputChunkFrames) * inputFormat.sampleRate / AudioSampleReader.outputSampleRate + 1)
+          .rounded(.up)))
     var inputEnded = false
     var outputPosition: AVAudioFramePosition = 0
 
