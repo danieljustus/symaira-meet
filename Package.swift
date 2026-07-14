@@ -25,7 +25,11 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
-        .testTarget(name: "SymMeetCoreTests", dependencies: ["SymMeetCore"]),
+        .testTarget(
+            name: "SymMeetCoreTests",
+            dependencies: ["SymMeetCore"],
+            resources: [.copy("../Fixtures/contracts")]
+        ),
         .testTarget(name: "SymMeetMCPTests", dependencies: ["SymMeetMCP"]),
         .testTarget(name: "SymMeetCLITests", dependencies: ["SymMeetCore"]),
     ],
