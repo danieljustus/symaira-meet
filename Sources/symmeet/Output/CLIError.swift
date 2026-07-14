@@ -30,6 +30,20 @@ struct CLIError: Error {
       return CLIError(
         exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
     }
+    if let error = error as? JobError {
+      switch error {
+      case .notFound, .invalidTransition:
+        return CLIError(exitCode: CLIExit.usage.rawValue, message: error.localizedDescription)
+      case .lockHeld, .lockNotOwned, .corruptRecord, .notInterrupted, .notRetryable,
+        .operationFailed, .alreadyExists:
+        return CLIError(
+          exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
+      }
+    }
+    if let error = error as? PipelineError {
+      return CLIError(
+        exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
+    }
     guard let storeError = error as? StoreError else {
       return CLIError(exitCode: CLIExit.runtimeFailure.rawValue, message: "Command failed.")
     }
