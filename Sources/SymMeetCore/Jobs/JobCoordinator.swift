@@ -244,7 +244,7 @@ public actor JobCoordinator {
   public func succeed(
     meetingID: UUID,
     using handle: LockHandle,
-    afterPublishing publish: () async throws -> Void
+    afterPublishing publish: @Sendable () async throws -> Void
   ) async throws -> TranscriptionJob {
     try await publish()
     return try await advance(
