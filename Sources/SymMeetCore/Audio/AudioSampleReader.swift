@@ -111,7 +111,14 @@ private final class AudioSampleReaderWorker: @unchecked Sendable {
         }
 
         do {
-          try file.read(into: inputBuffer, frameCount: inputCapacity)
+          let remainingFrames = file.length - file.framePosition
+          guard remainingFrames > 0 else {
+            inputStatus.pointee = .endOfStream
+            inputEnded = true
+            return nil
+          }
+          let frameCount = min(inputCapacity, AVAudioFrameCount(remainingFrames))
+          try file.read(into: inputBuffer, frameCount: frameCount)
         } catch {
           inputReadError = error
           inputStatus.pointee = .endOfStream
