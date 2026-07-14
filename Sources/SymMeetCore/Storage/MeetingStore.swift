@@ -124,6 +124,27 @@ public actor MeetingStore {
     }
   }
 
+  /// Returns the derived files eligible for a retention cleanup after validating
+  /// that every path remains under the configured data root.
+  public func derivedArtifactURLs(meetingID: String) throws -> [URL] {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+
+    let audioDirectory = directory.appending(path: "audio", directoryHint: .isDirectory)
+    let candidates = [
+      layout.rawSegmentsURL(in: directory),
+      layout.editedSegmentsURL(in: directory),
+      layout.transcriptURL(in: directory),
+      audioDirectory.appending(path: "normalized.caf", directoryHint: .notDirectory),
+      audioDirectory.appending(path: "normalized", directoryHint: .isDirectory),
+    ]
+    for candidate in candidates {
+      try requireSafePath(candidate)
+    }
+    return candidates
+  }
+
   public func trash(meetingID: String) throws {
     let normalizedID = try normalizedMeetingID(meetingID)
     let source = layout.meetingDirectory(normalizedID)

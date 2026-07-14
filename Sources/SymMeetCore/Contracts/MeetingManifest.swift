@@ -132,7 +132,7 @@ public struct MeetingManifest: Codable, Equatable, Sendable {
   public let originalAsset: String?
   public let audioTracks: [AudioTrack]
   public let language: String?
-  public let job: MeetingJob?
+  public var job: MeetingJob?
   public let consent: ConsentState
   public let retention: RetentionMetadata
   public var additionalFields: [String: JSONValue]
