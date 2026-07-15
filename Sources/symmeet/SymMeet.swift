@@ -9,7 +9,7 @@ struct SymMeet: AsyncParsableCommand {
     subcommands: [
       Version.self, Doctor.self, Configuration.self, Meeting.self, Model.self,
       Transcribe.self, Job.self, Export.self, Completion.self,
-      Permissions.self, Capture.self,
+      Permissions.self, Capture.self, Record.self,
     ]
   )
 
