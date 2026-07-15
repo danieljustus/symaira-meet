@@ -8,6 +8,7 @@ let package = Package(
   ],
   products: [
     .library(name: "SymMeetCore", targets: ["SymMeetCore"]),
+    .library(name: "SymMeetCapture", targets: ["SymMeetCapture"]),
     .library(name: "SymMeetMCP", targets: ["SymMeetMCP"]),
     .library(name: "SymMeetWhisperKit", targets: ["SymMeetWhisperKit"]),
     .executable(name: "symmeet", targets: ["symmeet"]),
@@ -18,6 +19,13 @@ let package = Package(
   ],
   targets: [
     .target(name: "SymMeetCore"),
+    .target(
+      name: "SymMeetCapture",
+      dependencies: ["SymMeetCore"],
+      swiftSettings: [
+        .enableUpcomingFeature("ExistentialAny"),
+      ]
+    ),
     .target(name: "SymMeetMCP", dependencies: ["SymMeetCore"]),
     .target(
       name: "SymMeetWhisperKit",
@@ -31,6 +39,7 @@ let package = Package(
       name: "symmeet",
       dependencies: [
         "SymMeetCore",
+        "SymMeetCapture",
         "SymMeetMCP",
         "SymMeetWhisperKit",
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
@@ -40,13 +49,21 @@ let package = Package(
       name: "SymMeetCoreTests",
       dependencies: ["SymMeetCore"],
       path: "Tests",
-      exclude: ["SymMeetCLITests", "SymMeetMCPTests", "SymMeetWhisperKitTests"],
+      exclude: [
+        "SymMeetCLITests", "SymMeetMCPTests", "SymMeetWhisperKitTests",
+        "SymMeetCaptureTests",
+      ],
       sources: ["Support/FakeTranscriptionEngine.swift", "SymMeetCoreTests"],
       resources: [.copy("Fixtures/contracts"), .copy("Fixtures/exports")]
     ),
     .testTarget(name: "SymMeetMCPTests", dependencies: ["SymMeetMCP"]),
     .testTarget(name: "SymMeetCLITests", dependencies: ["SymMeetCore"]),
     .testTarget(name: "SymMeetWhisperKitTests", dependencies: ["SymMeetWhisperKit"]),
+    .testTarget(
+      name: "SymMeetCaptureTests",
+      dependencies: ["SymMeetCapture"],
+      path: "Tests/SymMeetCaptureTests"
+    ),
   ],
   swiftLanguageModes: [.v6]
 )
