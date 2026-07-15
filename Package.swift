@@ -11,6 +11,7 @@ let package = Package(
     .library(name: "SymMeetCapture", targets: ["SymMeetCapture"]),
     .library(name: "SymMeetMCP", targets: ["SymMeetMCP"]),
     .library(name: "SymMeetWhisperKit", targets: ["SymMeetWhisperKit"]),
+    .library(name: "SymMeetSpeakerKit", targets: ["SymMeetSpeakerKit"]),
     .executable(name: "symmeet", targets: ["symmeet"]),
   ],
   dependencies: [
@@ -28,6 +29,14 @@ let package = Package(
     ),
     .target(name: "SymMeetMCP", dependencies: ["SymMeetCore"]),
     .target(
+      name: "SymMeetSpeakerKit",
+      dependencies: [
+        "SymMeetCore",
+        .product(name: "SpeakerKit", package: "argmax-oss-swift"),
+      ],
+      resources: [.copy("THIRD_PARTY_NOTICES.md")]
+    ),
+    .target(
       name: "SymMeetWhisperKit",
       dependencies: [
         "SymMeetCore",
@@ -42,6 +51,7 @@ let package = Package(
         "SymMeetCapture",
         "SymMeetMCP",
         "SymMeetWhisperKit",
+        "SymMeetSpeakerKit",
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
       ]
     ),
@@ -51,7 +61,7 @@ let package = Package(
       path: "Tests",
       exclude: [
         "SymMeetCLITests", "SymMeetMCPTests", "SymMeetWhisperKitTests",
-        "SymMeetCaptureTests",
+        "SymMeetCaptureTests", "SymMeetSpeakerKitTests",
       ],
       sources: ["Support/FakeTranscriptionEngine.swift", "SymMeetCoreTests"],
       resources: [.copy("Fixtures/contracts"), .copy("Fixtures/exports"), .copy("Fixtures/integration")]
@@ -59,6 +69,11 @@ let package = Package(
     .testTarget(name: "SymMeetMCPTests", dependencies: ["SymMeetMCP"]),
     .testTarget(name: "SymMeetCLITests", dependencies: ["SymMeetCore"]),
     .testTarget(name: "SymMeetWhisperKitTests", dependencies: ["SymMeetWhisperKit"]),
+    .testTarget(
+      name: "SymMeetSpeakerKitTests",
+      dependencies: ["SymMeetSpeakerKit", "SymMeetCore"],
+      path: "Tests/SymMeetSpeakerKitTests"
+    ),
     .testTarget(
       name: "SymMeetCaptureTests",
       dependencies: ["SymMeetCapture"],
