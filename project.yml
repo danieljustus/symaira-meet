@@ -1,0 +1,41 @@
+name: SymMeetAgent
+options:
+  bundleIdPrefix: dev.symaira
+  deploymentTarget:
+    macOS: "15.0"
+packages:
+  symaira-meet:
+    path: "."
+#  symaira-appkit:
+#    url: https://github.com/danieljustus/symaira-appkit.git
+#    exactVersion: 0.4.0
+targets:
+  SymMeetAgent:
+    type: application
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Sources/SymMeetAgent
+    dependencies:
+      - package: symaira-meet
+        product: SymMeetCore
+      - package: symaira-meet
+        product: SymMeetCapture
+      - package: symaira-appkit
+        product: SymairaTheme
+      - package: symaira-appkit
+        product: SymairaDaemonKit
+    info:
+      plist:
+        CFBundleIdentifier: dev.symaira.symmeet.agent
+        NSMicrophoneUsageDescription: "Symaira Meet requires microphone access to record meetings."
+        NSScreenCaptureUsageDescription: "Symaira Meet requires Screen Recording permission to capture system audio."
+        LSUIElement: true
+  SymMeetAgentTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "15.0"
+    sources:
+      - path: Tests/SymMeetAgentTests
+    dependencies:
+      - target: SymMeetAgent
