@@ -6,9 +6,9 @@ options:
 packages:
   symaira-meet:
     path: "."
-#  symaira-appkit:
-#    url: https://github.com/danieljustus/symaira-appkit.git
-#    exactVersion: 0.4.0
+  symaira-appkit:
+    url: https://github.com/danieljustus/symaira-appkit.git
+    exactVersion: 0.4.0
 targets:
   SymMeetAgent:
     type: application
@@ -26,7 +26,8 @@ targets:
       - package: symaira-appkit
         product: SymairaDaemonKit
     info:
-      plist:
+      path: Generated/SymMeetAgent-Info.plist
+      properties:
         CFBundleIdentifier: dev.symaira.symmeet.agent
         NSMicrophoneUsageDescription: "Symaira Meet requires microphone access to record meetings."
         NSScreenCaptureUsageDescription: "Symaira Meet requires Screen Recording permission to capture system audio."

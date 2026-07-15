@@ -3,3 +3,5 @@
 .swiftpm/
 xcuserdata/
 DerivedData/
+SymMeetAgent.xcodeproj/
+Generated/
