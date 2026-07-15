@@ -56,7 +56,7 @@ stable `version --json` handshake is:
 {"tool":"symmeet","version":"...","schema_version":1}
 ```
 
-## Design principles
+## Why symmeet
 
 - Local-first: meeting content stays on the device by default.
 - Standalone-first: artifacts are portable files, not records in a proprietary
