@@ -17,6 +17,14 @@ public enum PipelineError: Error, Equatable, LocalizedError, Sendable {
   /// The requested meeting has no importable original asset on record, so a
   /// retry has nothing to re-transcribe.
   case missingOriginalAsset
+  /// The meeting has no raw transcript segments available for diarization.
+  case noSegmentsForDiarization
+  /// The meeting has no raw transcript segments available for alignment.
+  case noSegmentsForAlignment
+  /// The requested meeting has no raw diarization turns.
+  case noDiarizationTurns
+  /// The requested meeting does not exist in the store.
+  case meetingNotFound(String)
 
   public var errorDescription: String? {
     switch self {
@@ -26,6 +34,14 @@ public enum PipelineError: Error, Equatable, LocalizedError, Sendable {
       "The transcription engine failed: \(message)."
     case .missingOriginalAsset:
       "This meeting has no imported original asset to retry from."
+    case .noSegmentsForDiarization:
+      "This meeting has no transcript segments to diarize."
+    case .noSegmentsForAlignment:
+      "This meeting has no transcript segments to align."
+    case .noDiarizationTurns:
+      "This meeting has no diarization turns to align with."
+    case .meetingNotFound(let id):
+      "Meeting '\(id)' was not found."
     }
   }
 }
