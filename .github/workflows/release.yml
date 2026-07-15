@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build CLI
+        run: |
+          swift build -c release --product symmeet
+          SYMMEET_VERSION="${{ steps.version.outputs.VERSION }}" \
+          .build/release/symmeet version --json
+
+      - name: Package CLI archive
+        run: scripts/package-cli.sh "${{ steps.version.outputs.VERSION }}"
+
+      - name: Build Agent app
+        run: scripts/build-release.sh "${{ steps.version.outputs.VERSION }}"
+
+      - name: Generate checksums
+        run: scripts/generate-checksums.sh dist/
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          generate_release_notes: true
+          files: |
+            dist/symmeet_*.tar.gz
+            dist/SymMeetAgent_*.dmg
+            dist/checksums.txt

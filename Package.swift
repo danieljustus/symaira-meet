@@ -54,7 +54,7 @@ let package = Package(
         "SymMeetCaptureTests",
       ],
       sources: ["Support/FakeTranscriptionEngine.swift", "SymMeetCoreTests"],
-      resources: [.copy("Fixtures/contracts"), .copy("Fixtures/exports")]
+      resources: [.copy("Fixtures/contracts"), .copy("Fixtures/exports"), .copy("Fixtures/integration")]
     ),
     .testTarget(name: "SymMeetMCPTests", dependencies: ["SymMeetMCP"]),
     .testTarget(name: "SymMeetCLITests", dependencies: ["SymMeetCore"]),
