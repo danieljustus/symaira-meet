@@ -1,5 +1,9 @@
 # symaira-meet
 
+[![CI](https://github.com/danieljustus/symaira-meet/actions/workflows/ci.yml/badge.svg)](https://github.com/danieljustus/symaira-meet/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/danieljustus/symaira-meet)](LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/danieljustus/symaira-meet)](https://github.com/danieljustus/symaira-meet/releases/latest)
+
 `symmeet` is a local-first, standalone command-line tool for durable meeting
 artifacts. It runs on macOS 15 or newer (Apple Silicon and Intel) and does not
 require another Symaira binary, a cloud account, or telemetry.
