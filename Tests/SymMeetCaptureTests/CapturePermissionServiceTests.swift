@@ -14,12 +14,21 @@ struct FakeMicrophoneProvider: MicrophoneAuthorizationProvider {
   func requestAccess() async -> Bool { requestResult }
 }
 
-struct FakeScreenRecordingProvider: ScreenRecordingAuthorizationProvider {
-  var authorized: Bool
+actor FakeScreenRecordingProvider: ScreenRecordingAuthorizationProvider {
+  let authorized: Bool
   private(set) var requestCalled = false
 
-  mutating func isAuthorized() -> Bool { authorized }
-  mutating func requestAuthorization() async { requestCalled = true }
+  init(authorized: Bool) {
+    self.authorized = authorized
+  }
+
+  nonisolated func isAuthorized() -> Bool {
+    authorized
+  }
+
+  func requestAuthorization() async {
+    requestCalled = true
+  }
 }
 
 // MARK: - Tests
