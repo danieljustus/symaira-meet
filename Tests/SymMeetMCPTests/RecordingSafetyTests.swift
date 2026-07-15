@@ -131,6 +131,7 @@ final class RecordingSafetyTests: XCTestCase {
   /// Status query fails with actionable error when agent is unavailable.
   func testRecordingStatusFailsWithActionableError() async {
     let bridge = MockAgentBridge()
+    bridge.queryRecordingStatusResult = .failure(AgentBridgeError.agentUnavailable)
     let handler = MeetingRecordingStatusHandler(agentBridge: bridge)
 
     let result = await (try? handler.execute(args: [:]))
