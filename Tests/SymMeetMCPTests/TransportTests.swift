@@ -56,10 +56,11 @@ final class TransportTests: XCTestCase {
   func testNotificationEncoding() throws {
     let notification = JSONRPCNotification(method: "notifications/initialized")
     let data = try JSONEncoder().encode(notification)
-    let json = String(decoding: data, as: UTF8.self)
+    let parsed = try JSONSerialization.jsonObject(with: data) as! [String: Any]
 
-    XCTAssertTrue(json.contains("notifications/initialized"))
-    XCTAssertFalse(json.contains("\"id\""))
+    XCTAssertEqual(parsed["jsonrpc"] as? String, "2.0")
+    XCTAssertEqual(parsed["method"] as? String, "notifications/initialized")
+    XCTAssertNil(parsed["id"], "Notification must not have an id field")
   }
 
   // MARK: - JSONRPCError constants
