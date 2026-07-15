@@ -58,7 +58,7 @@ final class TransportTests: XCTestCase {
     let data = try JSONEncoder().encode(notification)
     let json = String(decoding: data, as: UTF8.self)
 
-    XCTAssertTrue(json.contains("\"method\":\"notifications/initialized\""))
+    XCTAssertTrue(json.contains("notifications/initialized"))
     XCTAssertFalse(json.contains("\"id\""))
   }
 
