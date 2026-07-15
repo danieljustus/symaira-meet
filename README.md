@@ -12,6 +12,17 @@ require another Symaira binary, a cloud account, or telemetry.
 > transcription, model downloads, cloud providers, accounts, and a graphical
 > application are deliberately not implemented yet.
 
+## Install
+
+Build from source requires Swift 6.0+ and macOS 15 or newer:
+
+```bash
+git clone https://github.com/danieljustus/symaira-meet.git
+cd symaira-meet
+swift build -c release
+cp .build/release/symmeet /usr/local/bin/
+```
+
 ## Build
 
 ```bash
