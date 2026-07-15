@@ -15,57 +15,68 @@ struct CaptureStateMachineTests {
   @Test("idle → authorizing succeeds")
   func idleToAuthorizing() {
     var machine = CaptureStateMachine()
-    #expect(machine.transition(to: .authorizing))
+    let didTransition = machine.transition(to: .authorizing)
+    #expect(didTransition)
     #expect(machine.state == .authorizing)
   }
 
   @Test("authorizing → starting succeeds")
   func authorizingToStarting() {
     var machine = CaptureStateMachine(initial: .authorizing)
-    #expect(machine.transition(to: .starting))
+    let didTransition = machine.transition(to: .starting)
+    #expect(didTransition)
     #expect(machine.state == .starting)
   }
 
   @Test("starting → recording succeeds")
   func startingToRecording() {
     var machine = CaptureStateMachine(initial: .starting)
-    #expect(machine.transition(to: .recording))
+    let didTransition = machine.transition(to: .recording)
+    #expect(didTransition)
     #expect(machine.state == .recording)
   }
 
   @Test("recording → pausing → paused succeeds")
   func recordingToPaused() {
     var machine = CaptureStateMachine(initial: .recording)
-    #expect(machine.transition(to: .pausing))
-    #expect(machine.transition(to: .paused))
+    let didPause = machine.transition(to: .pausing)
+    #expect(didPause)
+    let didFinishPause = machine.transition(to: .paused)
+    #expect(didFinishPause)
     #expect(machine.state == .paused)
   }
 
   @Test("paused → starting (resume) succeeds")
   func pausedToStarting() {
     var machine = CaptureStateMachine(initial: .paused)
-    #expect(machine.transition(to: .starting))
+    let didTransition = machine.transition(to: .starting)
+    #expect(didTransition)
   }
 
   @Test("recording → stopping → finished")
   func recordingToFinished() {
     var machine = CaptureStateMachine(initial: .recording)
-    #expect(machine.transition(to: .stopping))
-    #expect(machine.transition(to: .finished))
+    let didStop = machine.transition(to: .stopping)
+    #expect(didStop)
+    let didFinish = machine.transition(to: .finished)
+    #expect(didFinish)
     #expect(machine.state == .finished)
   }
 
   @Test("paused → stopping → finished")
   func pausedToFinished() {
     var machine = CaptureStateMachine(initial: .paused)
-    #expect(machine.transition(to: .stopping))
-    #expect(machine.transition(to: .finished))
+    let didStop = machine.transition(to: .stopping)
+    #expect(didStop)
+    let didFinish = machine.transition(to: .finished)
+    #expect(didFinish)
   }
 
   @Test("recording → failed (reason)")
   func recordingToFailed() {
     var machine = CaptureStateMachine(initial: .recording)
-    #expect(machine.transition(to: .failed(reason: "permission revoked")))
+    let didFail = machine.transition(to: .failed(reason: "permission revoked"))
+    #expect(didFail)
     if case .failed = machine.state {
     } else {
       Issue.record("Expected failed state")
@@ -75,34 +86,39 @@ struct CaptureStateMachineTests {
   @Test("recording → interrupted (reason)")
   func recordingToInterrupted() {
     var machine = CaptureStateMachine(initial: .recording)
-    #expect(machine.transition(to: .interrupted(reason: "sleep")))
+    let didInterrupt = machine.transition(to: .interrupted(reason: "sleep"))
+    #expect(didInterrupt)
   }
 
   @Test("re-entrant start from recording is rejected")
   func reentrantStartIsRejected() {
     var machine = CaptureStateMachine(initial: .recording)
-    #expect(!machine.transition(to: .authorizing))
+    let didTransition = machine.transition(to: .authorizing)
+    #expect(!didTransition)
     #expect(machine.state == .recording)
   }
 
   @Test("idle → recording directly is rejected")
   func idleToRecordingIsRejected() {
     var machine = CaptureStateMachine()
-    #expect(!machine.transition(to: .recording))
+    let didTransition = machine.transition(to: .recording)
+    #expect(!didTransition)
     #expect(machine.state == .idle)
   }
 
   @Test("finished → authorizing is rejected")
   func finishedToAuthorizingIsRejected() {
     var machine = CaptureStateMachine(initial: .finished)
-    #expect(!machine.transition(to: .authorizing))
+    let didTransition = machine.transition(to: .authorizing)
+    #expect(!didTransition)
     #expect(machine.state == .finished)
   }
 
   @Test("failed → failed from idle is rejected")
   func idleToFailedIsRejected() {
     var machine = CaptureStateMachine(initial: .idle)
-    #expect(!machine.transition(to: .failed(reason: "test")))
+    let didTransition = machine.transition(to: .failed(reason: "test"))
+    #expect(!didTransition)
   }
 
   @Test("CaptureState description is human readable")
