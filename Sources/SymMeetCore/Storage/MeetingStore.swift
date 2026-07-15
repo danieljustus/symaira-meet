@@ -214,6 +214,221 @@ public actor MeetingStore {
     }
   }
 
+  // MARK: - Diarization turns
+
+  /// Appends raw diarization turns to the meeting's `turns.raw.jsonl`
+  /// evidence file. Engine output is immutable, so this file is append-only.
+  public func appendRawTurns(_ turns: [SpeakerTurn], meetingID: String) throws {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+    let url = layout.turnsRawURL(in: directory)
+    try requireSafePath(url)
+    let existing = (try? Data(contentsOf: url)) ?? Data()
+    do {
+      var updated = existing
+      for turn in turns {
+        let data = try ContractCodec.encoder().encode(turn)
+        updated.append(data)
+        updated.append(0x0A)
+      }
+      try AtomicFileWriter.write(updated, to: url)
+    } catch {
+      throw error is StoreError ? error : StoreError.operationFailed
+    }
+  }
+
+  /// Reads back every turn in `turns.raw.jsonl`, in write order.
+  public func rawTurns(meetingID: String) throws -> [SpeakerTurn] {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+    let url = layout.turnsRawURL(in: directory)
+    try requireSafePath(url)
+    guard let data = try? Data(contentsOf: url), !data.isEmpty else { return [] }
+    do {
+      return try data.split(separator: 0x0A).map {
+        try ContractCodec.decoder().decode(SpeakerTurn.self, from: Data($0))
+      }
+    } catch {
+      throw StoreError.malformedArtifact
+    }
+  }
+
+  /// Overwrites the edited turns file. Unlike raw turns, edited turns are
+  /// a derived projection that may be regenerated from the raw turns +
+  /// speaker map at any time.
+  public func writeEditedTurns(_ turns: [SpeakerTurn], meetingID: String) throws {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+    let url = layout.turnsEditedURL(in: directory)
+    try requireSafePath(url)
+    do {
+      var data = Data()
+      for turn in turns {
+        let line = try ContractCodec.encoder().encode(turn)
+        data.append(line)
+        data.append(0x0A)
+      }
+      try AtomicFileWriter.write(data, to: url)
+    } catch {
+      throw error is StoreError ? error : StoreError.operationFailed
+    }
+  }
+
+  /// Reads the edited turns, if any.
+  public func editedTurns(meetingID: String) throws -> [SpeakerTurn] {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+    let url = layout.turnsEditedURL(in: directory)
+    try requireSafePath(url)
+    guard let data = try? Data(contentsOf: url), !data.isEmpty else { return [] }
+    do {
+      return try data.split(separator: 0x0A).map {
+        try ContractCodec.decoder().decode(SpeakerTurn.self, from: Data($0))
+      }
+    } catch {
+      throw StoreError.malformedArtifact
+    }
+  }
+
+  // MARK: - Speaker alignment
+
+  /// Persists the alignment for a meeting (overwrites -- alignment is a
+  /// derived artifact that may be regenerated).
+  public func writeAlignment(_ alignments: [SpeakerAlignment], meetingID: String) throws {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+    let url = layout.alignmentURL(in: directory)
+    try requireSafePath(url)
+    do {
+      let data = try ContractCodec.encoder(prettyPrinted: true).encode(alignments)
+      try AtomicFileWriter.write(data, to: url)
+    } catch {
+      throw error is StoreError ? error : StoreError.operationFailed
+    }
+  }
+
+  /// Reads the alignment data, if any.
+  public func alignment(meetingID: String) throws -> [SpeakerAlignment] {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+    let url = layout.alignmentURL(in: directory)
+    try requireSafePath(url)
+    guard let data = try? Data(contentsOf: url), !data.isEmpty else { return [] }
+    do {
+      return try ContractCodec.decoder().decode([SpeakerAlignment].self, from: data)
+    } catch {
+      throw StoreError.malformedArtifact
+    }
+  }
+
+  // MARK: - Speaker edits
+
+  /// Appends one speaker edit event to `speaker_edits.jsonl`.
+  public func appendSpeakerEdit(_ event: SpeakerEditEvent, meetingID: String) throws {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+    let url = layout.speakerEditsURL(in: directory)
+    try requireSafePath(url)
+    let existing = (try? Data(contentsOf: url)) ?? Data()
+    do {
+      let data = try ContractCodec.encoder().encode(event)
+      var updated = existing
+      updated.append(data)
+      updated.append(0x0A)
+      try AtomicFileWriter.write(updated, to: url)
+    } catch {
+      throw error is StoreError ? error : StoreError.operationFailed
+    }
+  }
+
+  /// Reads all speaker edit events, in write order.
+  public func speakerEdits(meetingID: String) throws -> [SpeakerEditEvent] {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+    let url = layout.speakerEditsURL(in: directory)
+    try requireSafePath(url)
+    guard let data = try? Data(contentsOf: url), !data.isEmpty else { return [] }
+    do {
+      return try data.split(separator: 0x0A).map {
+        try ContractCodec.decoder().decode(SpeakerEditEvent.self, from: Data($0))
+      }
+    } catch {
+      throw StoreError.malformedArtifact
+    }
+  }
+
+  // MARK: - Speaker map
+
+  /// Persists the derived speaker map.
+  public func writeSpeakerMap(_ map: SpeakerMap, meetingID: String) throws {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+    let url = layout.speakerMapURL(in: directory)
+    try requireSafePath(url)
+    do {
+      let data = try ContractCodec.encoder(prettyPrinted: true).encode(map)
+      try AtomicFileWriter.write(data, to: url)
+    } catch {
+      throw error is StoreError ? error : StoreError.operationFailed
+    }
+  }
+
+  /// Reads the derived speaker map, if any.
+  public func speakerMap(meetingID: String) throws -> SpeakerMap? {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+    let url = layout.speakerMapURL(in: directory)
+    try requireSafePath(url)
+    guard let data = try? Data(contentsOf: url), !data.isEmpty else { return nil }
+    do {
+      return try ContractCodec.decoder().decode(SpeakerMap.self, from: data)
+    } catch {
+      throw StoreError.malformedArtifact
+    }
+  }
+
+  // MARK: - Pipeline state
+
+  /// Persists the pipeline state for a meeting.
+  public func writePipelineState(_ state: PipelineState, meetingID: String) throws {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+    let url = layout.pipelineStateURL(in: directory)
+    try requireSafePath(url)
+    do {
+      let data = try ContractCodec.encoder(prettyPrinted: true).encode(state)
+      try AtomicFileWriter.write(data, to: url)
+    } catch {
+      throw error is StoreError ? error : StoreError.operationFailed
+    }
+  }
+
+  /// Reads the pipeline state, if any.
+  public func pipelineState(meetingID: String) throws -> PipelineState? {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    try requireExistingSafeDirectory(directory)
+    let url = layout.pipelineStateURL(in: directory)
+    try requireSafePath(url)
+    guard let data = try? Data(contentsOf: url), !data.isEmpty else { return nil }
+    do {
+      return try ContractCodec.decoder().decode(PipelineState.self, from: data)
+    } catch {
+      throw StoreError.malformedArtifact
+    }
+  }
+
   /// Returns the derived files eligible for a retention cleanup after validating
   /// that every path remains under the configured data root.
   public func derivedArtifactURLs(meetingID: String) throws -> [URL] {

@@ -11,6 +11,7 @@ struct SymMeet: AsyncParsableCommand {
       Transcribe.self, Job.self, Export.self, Completion.self,
       Permissions.self, Capture.self, Record.self, MCP.self,
       Capabilities.self, Benchmark.self,
+      Diarize.self, Speaker.self, Process.self,
     ]
   )
 
