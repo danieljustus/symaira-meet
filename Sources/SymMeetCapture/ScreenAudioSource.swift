@@ -1,6 +1,6 @@
 import CoreMedia
 import Foundation
-import ScreenCaptureKit
+@preconcurrency import ScreenCaptureKit
 
 /// Captures system audio from a ScreenCaptureKit stream.
 public actor ScreenAudioSource {
