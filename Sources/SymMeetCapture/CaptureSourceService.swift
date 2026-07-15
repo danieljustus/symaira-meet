@@ -1,6 +1,6 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import Foundation
-import ScreenCaptureKit
+@preconcurrency import ScreenCaptureKit
 
 // MARK: - Provider protocols (injectable for testing)
 
