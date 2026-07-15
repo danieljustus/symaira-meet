@@ -16,6 +16,9 @@ struct CLIError: Error {
 
   static func from(_ error: Error) -> CLIError {
     if let error = error as? CLIError { return error }
+    if let error = error as? ExportError {
+      return CLIError(exitCode: CLIExit.usage.rawValue, message: error.localizedDescription)
+    }
     if let error = error as? ModelError {
       switch error {
       case .invalidIdentifier, .unknownModel:
@@ -27,6 +30,20 @@ struct CLIError: Error {
       }
     }
     if let error = error as? WhisperKitEngineError {
+      return CLIError(
+        exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
+    }
+    if let error = error as? JobError {
+      switch error {
+      case .notFound, .invalidTransition:
+        return CLIError(exitCode: CLIExit.usage.rawValue, message: error.localizedDescription)
+      case .lockHeld, .lockNotOwned, .corruptRecord, .notInterrupted, .notRetryable,
+        .operationFailed, .alreadyExists:
+        return CLIError(
+          exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
+      }
+    }
+    if let error = error as? PipelineError {
       return CLIError(
         exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
     }

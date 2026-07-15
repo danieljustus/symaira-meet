@@ -7,6 +7,7 @@ final class JobStateMachineTests: XCTestCase {
   /// The exhaustive set of transitions the issue's state diagram allows:
   ///
   ///   queued -> preparing -> transcribing -> exporting -> succeeded
+  ///          -> cancelled                (no in-flight write to wait for)
   ///                       -> failed
   ///                       -> cancelling -> cancelled
   ///   failed | cancelled | interrupted -> queued        (explicit retry/resume only)
@@ -14,6 +15,7 @@ final class JobStateMachineTests: XCTestCase {
   ///                                            (recovery only, never automatic progress)
   private static let expectedAllowed: Set<JobStateMachine.Transition> = [
     .init(.queued, .preparing),
+    .init(.queued, .cancelled),
 
     .init(.preparing, .transcribing),
     .init(.preparing, .failed),
