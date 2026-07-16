@@ -93,7 +93,7 @@ public struct MCPServer: Sendable {
       ] as [String: Any],
       "serverInfo": [
         "name": "symmeet",
-        "version": "0.1.0",
+        "version": "0.4.0-beta.1",
       ],
     ]
     return JSONRPCResponse(id: request.id, result: AnyCodable(result))
