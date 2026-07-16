@@ -34,7 +34,7 @@ struct ConsentSheet: View {
           let trimmed = purposeInput.trimmingCharacters(in: .whitespacesAndNewlines)
           let purpose = trimmed.isEmpty ? "General Meeting" : trimmed
           Task {
-            model.initiateRecording(purpose: purpose)
+            await model.initiateRecording(purpose: purpose)
             await model.confirmConsent(attested: true)
           }
         }

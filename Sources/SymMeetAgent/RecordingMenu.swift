@@ -22,7 +22,7 @@ struct RecordingMenu: View {
           Button(action: {
             let purpose = purposeInput.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !purpose.isEmpty else { return }
-            model.initiateRecording(purpose: purpose)
+            Task { await model.initiateRecording(purpose: purpose) }
           }) {
             Text("Record Meeting")
               .bold()
