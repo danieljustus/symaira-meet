@@ -41,3 +41,31 @@ jobs:
             dist/symmeet_*.tar.gz
             dist/SymMeetAgent_*.dmg
             dist/checksums.txt
+
+      - name: Update Homebrew formula
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          ASSET="symmeet_${VERSION}_darwin_arm64.tar.gz"
+          URL="https://github.com/danieljustus/symaira-meet/releases/download/${{ github.ref_name }}/${ASSET}"
+          SHA256=$(awk -v asset="${ASSET}" '$0 ~ asset { print $1 }' dist/checksums.txt)
+
+          if [ -z "${SHA256}" ]; then
+            echo "Could not find checksum for ${ASSET}" >&2
+            exit 1
+          fi
+
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/danieljustus/tap.git" tap-repo
+          cd tap-repo
+
+          sed -i.bak -E "s|url \".*\"|url \"${URL}\"|" Formula/symmeet.rb
+          sed -i.bak -E "s|sha256 \".*\"|sha256 \"${SHA256}\"|" Formula/symmeet.rb
+          rm -f Formula/symmeet.rb.bak
+
+          git add Formula/symmeet.rb
+          git commit -m "symmeet ${VERSION}" || true
+          git push
