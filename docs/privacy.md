@@ -14,8 +14,7 @@ restart.
 Local model downloads are not meeting-content transmission. Downloading a model
 from a user-selected source fetches model bytes to the local cache; it does not
 send meeting audio, transcript text, participant names, calendar information,
-or artifact files to that source. This beta does not yet implement model
-downloads, and adding one must preserve that boundary.
+or artifact files to that source.
 
 Retention policies can keep artifacts, clean derived artifacts after a date, or
 clean them after a confirmed export. Cleanup removes derived text, normalized
