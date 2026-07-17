@@ -36,13 +36,15 @@ public final class AgentModel: ObservableObject {
     permissionService: CapturePermissionService = CapturePermissionService()
   ) {
     self.permissionService = permissionService
-    checkPermissions()
+    Task { @MainActor in
+      await checkPermissions()
+    }
   }
 
   // MARK: - Permissions
 
-  public func checkPermissions() {
-    let snapshot = permissionService.currentStatus()
+  public func checkPermissions() async {
+    let snapshot = await permissionService.currentStatus()
     microphoneAuthorized = snapshot.microphone.status == .authorized
     screenRecordingAuthorized = snapshot.screenRecording.status == .authorized
 
@@ -55,18 +57,18 @@ public final class AgentModel: ObservableObject {
 
   public func requestMicrophonePermission() async {
     _ = await permissionService.requestMicrophoneAccess()
-    checkPermissions()
+    await checkPermissions()
   }
 
   public func requestScreenRecordingPermission() async {
     await permissionService.requestScreenRecordingAccess()
-    checkPermissions()
+    await checkPermissions()
   }
 
   // MARK: - Recording Flow
 
-  public func initiateRecording(purpose: String) {
-    checkPermissions()
+  public func initiateRecording(purpose: String) async {
+    await checkPermissions()
     guard microphoneAuthorized && screenRecordingAuthorized else {
       state = .permissionRequired
       return
@@ -171,7 +173,7 @@ public final class AgentModel: ObservableObject {
 
     do {
       let result = try await session.stop()
-      try auth.stopRecording(sessionID: sessionID)
+      try await auth.stopRecording(sessionID: sessionID)
 
       // Build manifest and save
       var audioTracks: [AudioTrack] = []

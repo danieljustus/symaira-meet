@@ -25,6 +25,11 @@ targets:
         product: SymairaTheme
       - package: symaira-appkit
         product: SymairaDaemonKit
+    settings:
+      base:
+        SWIFT_VERSION: "5"
+        OTHER_SWIFT_FLAGS: ["-strict-concurrency=minimal"]
+        CODE_SIGN_ENTITLEMENTS: Sources/SymMeetAgent/SymMeetAgent.entitlements
     info:
       path: Generated/SymMeetAgent-Info.plist
       properties:

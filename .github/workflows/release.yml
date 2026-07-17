@@ -6,33 +6,119 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
-  build:
+  release:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Extract version from tag
         id: version
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Build CLI
         run: |
-          swift build -c release --product symmeet
-          SYMMEET_VERSION="${{ steps.version.outputs.VERSION }}" \
-          .build/release/symmeet version --json
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "TAG=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
 
-      - name: Package CLI archive
-        run: scripts/package-cli.sh "${{ steps.version.outputs.VERSION }}"
+      - name: Guard — version matches tag
+        run: |
+          if [ "$GITHUB_REF_NAME" != "v${{ steps.version.outputs.VERSION }}" ]; then
+            echo "ERROR: GITHUB_REF_NAME (${GITHUB_REF_NAME}) does not match v${VERSION}" >&2
+            exit 1
+          fi
 
-      - name: Build Agent app
-        run: scripts/build-release.sh "${{ steps.version.outputs.VERSION }}"
+      - name: Guard — required secrets present
+        env:
+          CHECK_CERT: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          CHECK_PASS: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          CHECK_ID: ${{ secrets.APPLE_ID }}
+          CHECK_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          CHECK_APP_PASS: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          MISSING=0
+          for NAME in CHECK_CERT CHECK_PASS CHECK_ID CHECK_TEAM CHECK_APP_PASS; do
+            eval "VAL=\$$NAME"
+            if [ -z "$VAL" ]; then
+              echo "ERROR: required secret ${NAME} is not set" >&2
+              MISSING=1
+            fi
+          done
+          if [ "$MISSING" -eq 1 ]; then
+            echo "All Apple signing secrets are required for signed beta releases." >&2
+            exit 1
+          fi
 
-      - name: Generate checksums
-        run: scripts/generate-checksums.sh dist/
+      - name: Import signing certificate
+        env:
+          P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$(mktemp -d)/signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
 
-      - name: Create release
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          echo "$P12_BASE64" | base64 --decode > /tmp/cert.p12
+          security import /tmp/cert.p12 \
+            -k "$KEYCHAIN_PATH" \
+            -P "$P12_PASSWORD" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+          rm -f /tmp/cert.p12
+
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+          echo "KEYCHAIN_PATH=${KEYCHAIN_PATH}" >> "$GITHUB_ENV"
+
+      - name: Export Apple credentials
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          echo "APPLE_ID=${APPLE_ID}" >> "$GITHUB_ENV"
+          echo "APPLE_TEAM_ID=${APPLE_TEAM_ID}" >> "$GITHUB_ENV"
+          echo "APPLE_APP_PASSWORD=${APPLE_APP_PASSWORD}" >> "$GITHUB_ENV"
+
+      - name: Set commit timestamp for reproducibility
+        run: |
+          TAG_TS=$(git log -1 --format=%ct "$GITHUB_REF_NAME")
+          echo "SOURCE_DATE_EPOCH=${TAG_TS}" >> "$GITHUB_ENV"
+
+      - name: Build signed release
+        run: scripts/build-release.sh "${{ steps.version.outputs.TAG }}"
+
+      - name: Verify release artifacts
+        run: |
+          scripts/release-smoke.sh dist/ "${{ steps.version.outputs.VERSION }}"
+
+      - name: Verify agent code signing
+        run: |
+          codesign --verify --deep --strict dist/SymMeetAgent.app
+          spctl --assess --type execute --verbose dist/SymMeetAgent.app
+          xcrun stapler validate dist/SymMeetAgent.app
+
+      - name: Verify checksums
+        run: cd dist && shasum -a 256 -c checksums.txt
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/*.dmg
+            dist/sbom.spdx.json
+
+      - name: Create prerelease
         uses: softprops/action-gh-release@v2
         with:
           prerelease: true
@@ -41,31 +127,12 @@ jobs:
             dist/symmeet_*.tar.gz
             dist/SymMeetAgent_*.dmg
             dist/checksums.txt
+            dist/sbom.spdx.json
+            dist/*_notices.tar.gz
 
-      - name: Update Homebrew formula
-        env:
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+      - name: Cleanup keychain
+        if: always()
         run: |
-          VERSION="${{ steps.version.outputs.VERSION }}"
-          ASSET="symmeet_${VERSION}_darwin_arm64.tar.gz"
-          URL="https://github.com/danieljustus/symaira-meet/releases/download/${{ github.ref_name }}/${ASSET}"
-          SHA256=$(awk -v asset="${ASSET}" '$0 ~ asset { print $1 }' dist/checksums.txt)
-
-          if [ -z "${SHA256}" ]; then
-            echo "Could not find checksum for ${ASSET}" >&2
-            exit 1
+          if [ -n "${KEYCHAIN_PATH:-}" ] && [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" 2>/dev/null || true
           fi
-
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/danieljustus/tap.git" tap-repo
-          cd tap-repo
-
-          sed -i.bak -E "s|url \".*\"|url \"${URL}\"|" Formula/symmeet.rb
-          sed -i.bak -E "s|sha256 \".*\"|sha256 \"${SHA256}\"|" Formula/symmeet.rb
-          rm -f Formula/symmeet.rb.bak
-
-          git add Formula/symmeet.rb
-          git commit -m "symmeet ${VERSION}" || true
-          git push

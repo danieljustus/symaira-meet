@@ -43,19 +43,15 @@ struct SymMeetAgentApp: App {
   @StateObject private var model = AgentModel()
 
   init() {
-    // Setup model in AppDelegate to handle termination logic
     let model = AgentModel()
     _model = StateObject(wrappedValue: model)
-
-    // We delay the delegate assignment slightly so the appDelegate is initialized
-    DispatchQueue.main.async {
-      appDelegate.model = model
-    }
+    _appDelegate = NSApplicationDelegateAdaptor(AppDelegate.self)
   }
 
   var body: some Scene {
     MenuBarExtra {
       RecordingMenu(model: model)
+        .onAppear { appDelegate.model = model }
     } label: {
       HStack(spacing: 4) {
         Image(systemName: "waveform.circle.fill")

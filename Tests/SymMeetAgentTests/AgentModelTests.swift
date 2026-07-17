@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import AVFoundation
 import SymMeetCore
 @testable import SymMeetCapture
 @testable import SymMeetAgent
@@ -40,6 +41,7 @@ struct AgentModelTests {
       screenRecordingProvider: FakeScreenRecordingProvider(authorized: false)
     )
     let model = AgentModel(permissionService: service)
+    await model.checkPermissions()
     #expect(model.state == .permissionRequired)
   }
 
@@ -50,6 +52,7 @@ struct AgentModelTests {
       screenRecordingProvider: FakeScreenRecordingProvider(authorized: true)
     )
     let model = AgentModel(permissionService: service)
+    await model.checkPermissions()
     #expect(model.state == .idle)
   }
 
@@ -62,7 +65,7 @@ struct AgentModelTests {
     let model = AgentModel(permissionService: service)
     #expect(model.state == .idle)
 
-    model.initiateRecording(purpose: "Test Meeting")
+    await model.initiateRecording(purpose: "Test Meeting")
     #expect(model.state == .consentConfirmation)
 
     model.cancelConsent()
