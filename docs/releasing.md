@@ -3,6 +3,10 @@
 ## Prerequisites
 
 - **CLI-only builds**: macOS 15+ with Swift (CLT sufficient)
+- **Tests and coverage**: full Xcode required (XCTest is not part of the
+  Command Line Tools). CI is the canonical test gate and publishes
+  `coverage.lcov` as the `coverage-report` workflow artifact on every run —
+  see [Coverage](#coverage)
 - **Agent app builds** (CI or local): full Xcode 15+ required (`xcodegen` installed via Homebrew)
 - Git with push access to the repository
 - A clean working tree on the `main` branch
@@ -73,6 +77,23 @@ The signed build additionally runs:
 codesign --verify --deep --strict dist/SymMeetAgent.app
 spctl --assess --type execute --verbose dist/SymMeetAgent.app
 xcrun stapler validate dist/SymMeetAgent.app
+```
+
+## Coverage
+
+CI is the canonical test and coverage gate. Every CI run executes
+`swift test --enable-code-coverage` on macos-15 (via `make coverage`) and
+uploads `coverage.lcov` as the `coverage-report` workflow artifact (GitHub
+Actions → CI → run → Artifacts, retained for 30 days). The prerelease gate
+uses this artifact to verify coverage, so no full Xcode install is needed on
+the coordinator machine.
+
+Local coverage requires full Xcode (XCTest is not part of the Command Line
+Tools; `make test`/`make coverage` fail fast with a clear error on CLT-only
+machines):
+
+```bash
+make coverage   # runs tests with coverage and writes coverage.lcov
 ```
 
 ## CI tag flow
