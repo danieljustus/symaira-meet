@@ -153,6 +153,7 @@ Release secrets (referenced only through GitHub Actions secrets):
 | `APPLE_ID` | Apple ID for notarization |
 | `APPLE_TEAM_ID` | Developer team ID |
 | `APPLE_APP_PASSWORD` | App-specific password for notarization |
+| `HOMEBREW_TAP_GITHUB_TOKEN` | Fine-grained PAT with **Contents: read/write** on `danieljustus/tap`; used by the formula publisher |
 
 These are never printed in logs. The signing workflow uses `set +x` around
 all signing and notarization commands.
@@ -166,9 +167,22 @@ recording permissions after updating.
 
 ## Homebrew
 
-Homebrew tap updates are handled in the
-[danieljustus/tap](https://github.com/danieljustus/tap) repository and are
-out of scope for this release pipeline.
+The CLI is distributed through the
+[danieljustus/tap](https://github.com/danieljustus/tap) repository as
+`Formula/symmeet.rb` (`brew install danieljustus/tap/symmeet`).
+
+The `release.yml` workflow updates the formula automatically at the end of a
+tag release: it reads the built asset name and its SHA-256 from
+`dist/checksums.txt`, rewrites the formula's `url` and `sha256`, and pushes
+to the tap repository. This requires the `HOMEBREW_TAP_GITHUB_TOKEN`
+repository secret (see the secrets table above); the secrets guard fails the
+release early when it is missing.
+
+Manual fallback (when the automated step did not run): after the GitHub
+release is published, edit `Formula/symmeet.rb` in `danieljustus/tap` — set
+`url` to the published `symmeet_v<VERSION>_darwin_arm64.tar.gz` asset URL and
+`sha256` to the matching entry from the release's `checksums.txt` — then
+commit and push.
 
 ## Rollback
 

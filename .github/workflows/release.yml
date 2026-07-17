@@ -38,9 +38,10 @@ jobs:
           CHECK_ID: ${{ secrets.APPLE_ID }}
           CHECK_TEAM: ${{ secrets.APPLE_TEAM_ID }}
           CHECK_APP_PASS: ${{ secrets.APPLE_APP_PASSWORD }}
+          CHECK_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
         run: |
           MISSING=0
-          for NAME in CHECK_CERT CHECK_PASS CHECK_ID CHECK_TEAM CHECK_APP_PASS; do
+          for NAME in CHECK_CERT CHECK_PASS CHECK_ID CHECK_TEAM CHECK_APP_PASS CHECK_TAP_TOKEN; do
             eval "VAL=\$$NAME"
             if [ -z "$VAL" ]; then
               echo "ERROR: required secret ${NAME} is not set" >&2
@@ -48,7 +49,7 @@ jobs:
             fi
           done
           if [ "$MISSING" -eq 1 ]; then
-            echo "All Apple signing secrets are required for signed beta releases." >&2
+            echo "All Apple signing secrets and the Homebrew tap token are required for signed beta releases." >&2
             exit 1
           fi
 
@@ -129,6 +130,34 @@ jobs:
             dist/checksums.txt
             dist/sbom.spdx.json
             dist/*_notices.tar.gz
+
+      - name: Update Homebrew formula
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.TAG }}
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          set -euo pipefail
+          ASSET="symmeet_v${VERSION}_darwin_arm64.tar.gz"
+          SHA=$(awk -v f="./${ASSET}" '$2 == f {print $1}' dist/checksums.txt)
+          if [ -z "${SHA}" ]; then
+            echo "ERROR: ${ASSET} not found in dist/checksums.txt" >&2
+            exit 1
+          fi
+          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/danieljustus/tap.git" tap-repo
+          cd tap-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          sed -i '' \
+            -e "s|^  url \".*\"|  url \"https://github.com/danieljustus/symaira-meet/releases/download/${TAG}/${ASSET}\"|" \
+            -e "s|^  sha256 \"[0-9a-f]*\"|  sha256 \"${SHA}\"|" \
+            Formula/symmeet.rb
+          if git diff --quiet; then
+            echo "Formula already up to date."
+            exit 0
+          fi
+          git commit -am "symmeet ${TAG}"
+          git push
 
       - name: Cleanup keychain
         if: always()
