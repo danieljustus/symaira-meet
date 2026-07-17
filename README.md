@@ -37,6 +37,16 @@ make lint
 The binary is named `symmeet`. Every `--json` command writes exactly one
 snake_case JSON document to stdout; diagnostics stay on stderr.
 
+### Tests and coverage
+
+`swift test` (and `make test`) requires a **full Xcode installation** — the
+Command Line Tools package does not include XCTest. On CLT-only machines the
+Makefile fails fast and points at the canonical gate instead: CI runs the test
+suite with coverage on every push and pull request and uploads
+`coverage-report` (`coverage.lcov`) as a workflow artifact (GitHub Actions →
+CI → run → Artifacts). With full Xcode, `make coverage` produces the same
+`coverage.lcov` locally.
+
 ## CLI
 
 ```text

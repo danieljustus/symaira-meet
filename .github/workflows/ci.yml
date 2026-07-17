@@ -12,7 +12,14 @@ jobs:
       - uses: actions/checkout@v7
       - name: Build
         run: make build
-      - name: Test
-        run: make test
+      - name: Test with coverage
+        run: make coverage
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.lcov
+          if-no-files-found: error
+          retention-days: 30
       - name: Lint
         run: make lint
