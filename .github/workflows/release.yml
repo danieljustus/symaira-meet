@@ -204,6 +204,7 @@ jobs:
             exit 0
           fi
           git commit -m "symmeet ${TAG}"
+          gh auth setup-git
           git push
 
       - name: Publish prerelease
