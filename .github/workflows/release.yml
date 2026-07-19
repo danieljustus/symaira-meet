@@ -96,6 +96,8 @@ jobs:
           echo "SOURCE_DATE_EPOCH=${TAG_TS}" >> "$GITHUB_ENV"
 
       - name: Install release tooling
+        env:
+          HOMEBREW_NO_REQUIRE_TAP_TRUST: "1"
         run: brew install xcodegen
 
       - name: Build signed release
