@@ -86,8 +86,12 @@ echo "  Bundle ID: ${BUNDLE_ID}, Version: ${SVSS}"
 if [ "$DRY_RUN" -eq 0 ]; then
   echo "==> Signing ${APP_NAME}.app..."
   SIGNING_ID="${APPLE_SIGNING_IDENTITY:-Developer ID Application}"
-  codesign --sign "$SIGNING_ID" --options runtime --timestamp --deep --strict \
-    "$DIST_DIR/${APP_NAME}.app"
+  if codesign --verify --deep --strict "$DIST_DIR/${APP_NAME}.app" 2>/dev/null; then
+    echo "  App is already signed by xcodebuild; keeping the verified signature."
+  else
+    codesign --sign "$SIGNING_ID" --options runtime --timestamp --deep --strict \
+      "$DIST_DIR/${APP_NAME}.app"
+  fi
 fi
 
 # ── Create DMG ──
