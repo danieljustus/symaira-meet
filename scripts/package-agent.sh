@@ -89,7 +89,7 @@ if [ "$DRY_RUN" -eq 0 ]; then
   if codesign --verify --deep --strict "$DIST_DIR/${APP_NAME}.app" 2>/dev/null; then
     echo "  App is already signed by xcodebuild; keeping the verified signature."
   else
-    codesign --sign "$SIGNING_ID" --options runtime --timestamp --deep --strict \
+    codesign --force --sign "$SIGNING_ID" --options runtime --timestamp --deep --strict \
       "$DIST_DIR/${APP_NAME}.app"
   fi
 fi
