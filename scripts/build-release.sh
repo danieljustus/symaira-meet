@@ -94,7 +94,11 @@ scripts/package-cli.sh "$VERSION"
 
 # ── (e) Build + package agent app (signs the app in the signed path) ──
 echo "==> Building agent app..."
-scripts/package-agent.sh ${DRY_RUN:+--dry-run} "$VERSION"
+PACKAGE_AGENT_ARGS=("$VERSION")
+if [ "$DRY_RUN" -eq 1 ]; then
+  PACKAGE_AGENT_ARGS=(--dry-run "$VERSION")
+fi
+scripts/package-agent.sh "${PACKAGE_AGENT_ARGS[@]}"
 
 # ── (e2) Notarize + staple (signed path only; rebuilds the DMG with the stapled app) ──
 if [ "$DRY_RUN" -eq 0 ]; then
