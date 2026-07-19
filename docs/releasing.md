@@ -153,7 +153,7 @@ Release secrets (referenced only through GitHub Actions secrets):
 | `APPLE_ID` | Apple ID for notarization |
 | `APPLE_TEAM_ID` | Developer team ID |
 | `APPLE_APP_PASSWORD` | App-specific password for notarization |
-| `HOMEBREW_TAP_GITHUB_TOKEN` | Fine-grained PAT with **Contents: read/write** on `danieljustus/tap`; used by the formula publisher |
+| `HOMEBREW_TAP_GITHUB_TOKEN` | Fine-grained PAT with **Contents: read/write** on `danieljustus/tap`; used by the Formula/Cask publisher |
 
 These are never printed in logs. The signing workflow uses `set +x` around
 all signing and notarization commands.
@@ -167,22 +167,27 @@ recording permissions after updating.
 
 ## Homebrew
 
-The CLI is distributed through the
+The CLI and agent are distributed through the
 [danieljustus/tap](https://github.com/danieljustus/tap) repository as
-`Formula/symmeet.rb` (`brew install danieljustus/tap/symmeet`).
+`Formula/symmeet.rb` and `Casks/symmeet-agent.rb`:
 
-The `release.yml` workflow updates the formula automatically at the end of a
-tag release: it reads the built asset name and its SHA-256 from
-`dist/checksums.txt`, rewrites the formula's `url` and `sha256`, and pushes
-to the tap repository. This requires the `HOMEBREW_TAP_GITHUB_TOKEN`
-repository secret (see the secrets table above); the secrets guard fails the
-release early when it is missing.
+```bash
+brew install danieljustus/tap/symmeet
+brew install --cask danieljustus/tap/symmeet-agent
+```
+
+The `release.yml` workflow updates the Formula and Cask automatically at the
+end of a tag release. It reads both built asset names and their SHA-256 values
+from `dist/checksums.txt`, rewrites the immutable release URLs and hashes, and
+pushes to the tap repository. This requires the
+`HOMEBREW_TAP_GITHUB_TOKEN` repository secret (see the secrets table above);
+the secrets guard fails the release early when it is missing.
 
 Manual fallback (when the automated step did not run): after the GitHub
-release is published, edit `Formula/symmeet.rb` in `danieljustus/tap` — set
-`url` to the published `symmeet_v<VERSION>_darwin_arm64.tar.gz` asset URL and
-`sha256` to the matching entry from the release's `checksums.txt` — then
-commit and push.
+release is published, update `Formula/symmeet.rb` and
+`Casks/symmeet-agent.rb` in `danieljustus/tap` with the published asset URLs
+and the matching entries from the release's `checksums.txt`, then commit and
+push.
 
 ## Rollback
 
