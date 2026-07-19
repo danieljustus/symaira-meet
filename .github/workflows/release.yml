@@ -144,19 +144,47 @@ jobs:
             echo "ERROR: ${ASSET} not found in dist/checksums.txt" >&2
             exit 1
           fi
-          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/danieljustus/tap.git" tap-repo
+          APP_ASSET="SymMeetAgent_v${VERSION}.dmg"
+          APP_SHA=$(awk -v f="./${APP_ASSET}" '$2 == f {print $1}' dist/checksums.txt)
+          if [ -z "${APP_SHA}" ]; then
+            echo "ERROR: ${APP_ASSET} not found in dist/checksums.txt" >&2
+            exit 1
+          fi
+          git clone --depth 1 "https://x-access-token:${HOME...git" tap-repo
           cd tap-repo
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p Casks
           sed -i '' \
             -e "s|^  url \".*\"|  url \"https://github.com/danieljustus/symaira-meet/releases/download/${TAG}/${ASSET}\"|" \
             -e "s|^  sha256 \"[0-9a-f]*\"|  sha256 \"${SHA}\"|" \
             Formula/symmeet.rb
-          if git diff --quiet; then
-            echo "Formula already up to date."
+          cat > Casks/symmeet-agent.rb <<EOF
+          cask "symmeet-agent" do
+            version "${VERSION}"
+            sha256 "${APP_SHA}"
+
+            url "https://github.com/danieljustus/symaira-meet/releases/download/${TAG}/${APP_ASSET}"
+            name "SymMeetAgent"
+            desc "Consent-first local meeting recording agent"
+            homepage "https://github.com/danieljustus/symaira-meet"
+
+            depends_on macos: :sequoia
+
+            app "SymMeetAgent.app"
+
+            zap trash: [
+              "~/Library/Caches/dev.symaira.symmeet.agent",
+              "~/Library/Preferences/dev.symaira.symmeet.agent.plist",
+            ]
+          end
+          EOF
+          git add Formula/symmeet.rb Casks/symmeet-agent.rb
+          if git diff --cached --quiet; then
+            echo "Homebrew formula and cask already up to date."
             exit 0
           fi
-          git commit -am "symmeet ${TAG}"
+          git commit -m "symmeet ${TAG}"
           git push
 
       - name: Cleanup keychain
