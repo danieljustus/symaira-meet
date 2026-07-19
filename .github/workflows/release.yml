@@ -124,7 +124,20 @@ jobs:
             dist/*.dmg
             dist/sbom.spdx.json
 
+      - name: Check existing prerelease
+        id: release_check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.TAG }}
+        run: |
+          if gh release view "$TAG" --repo danieljustus/symaira-meet >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Create prerelease
+        if: steps.release_check.outputs.exists != 'true'
         uses: softprops/action-gh-release@v2
         with:
           prerelease: true
@@ -192,6 +205,12 @@ jobs:
           fi
           git commit -m "symmeet ${TAG}"
           git push
+
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.TAG }}
+        run: gh release edit "$TAG" --repo danieljustus/symaira-meet --draft=false --prerelease=true
 
       - name: Cleanup keychain
         if: always()
