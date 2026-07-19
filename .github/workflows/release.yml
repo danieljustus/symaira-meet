@@ -95,6 +95,9 @@ jobs:
           TAG_TS=$(git log -1 --format=%ct "$GITHUB_REF_NAME")
           echo "SOURCE_DATE_EPOCH=${TAG_TS}" >> "$GITHUB_ENV"
 
+      - name: Install release tooling
+        run: brew install xcodegen
+
       - name: Build signed release
         run: scripts/build-release.sh "${{ steps.version.outputs.TAG }}"
 
