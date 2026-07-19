@@ -27,7 +27,14 @@ APP=$(find "$DIST_DIR" -maxdepth 1 -type d -name '*.app' -print -quit)
 
 echo "==> Submitting DMG for notarization..."
 NOTARY_JSON=$(mktemp)
-trap 'rm -f "$NOTARY_JSON"' EXIT
+DMG_STAGE=""
+cleanup() {
+  rm -f "$NOTARY_JSON"
+  if [ -n "$DMG_STAGE" ]; then
+    rm -rf "$DMG_STAGE"
+  fi
+}
+trap cleanup EXIT
 xcrun notarytool submit "$DMG" \
   --apple-id "$APPLE_ID" \
   --team-id "$APPLE_TEAM_ID" \
@@ -48,7 +55,6 @@ if [ -n "$APP" ]; then
   echo "==> Rebuilding DMG with stapled app..."
   DMG_NAME=$(basename "$DMG")
   DMG_STAGE=$(mktemp -d)
-  trap "rm -rf '$DMG_STAGE'" EXIT
 
   ln -s /Applications "$DMG_STAGE/Applications"
   cp -R "$APP" "$DMG_STAGE/"
@@ -61,6 +67,21 @@ if [ -n "$APP" ]; then
     2>/dev/null
 
   rm -rf "$DMG_STAGE"
+  DMG_STAGE=""
+
+  echo "==> Re-submitting rebuilt DMG for notarization..."
+  xcrun notarytool submit "$DIST_DIR/$DMG_NAME" \
+    --apple-id "$APPLE_ID" \
+    --team-id "$APPLE_TEAM_ID" \
+    --password "$APPLE_APP_PASSWORD" \
+    --wait \
+    --output-format json > "$NOTARY_JSON"
+
+  NOTARY_STATUS=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "$NOTARY_JSON")
+  if [ "$NOTARY_STATUS" != "Accepted" ]; then
+    echo "Error: Final DMG notarization finished with status ${NOTARY_STATUS}" >&2
+    exit 1
+  fi
 
   echo "==> Stapling DMG..."
   xcrun stapler staple "$DIST_DIR/$DMG_NAME"
