@@ -15,7 +15,7 @@ permissions:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
@@ -23,8 +23,10 @@ jobs:
         include:
           - language: actions
             build-mode: none
+            os: ubuntu-latest
           - language: swift
             build-mode: manual
+            os: macos-15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
