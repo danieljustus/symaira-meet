@@ -64,10 +64,17 @@ SWIFT
 # ── (b) Build CLI in release mode ──
 echo "==> Building symmeet (release)..."
 swift build -c release --product symmeet 2>&1
+RELEASE_BIN_DIR="$(swift build -c release --show-bin-path)"
+RELEASE_BINARY="$RELEASE_BIN_DIR/symmeet"
+
+if [ ! -x "$RELEASE_BINARY" ]; then
+  echo "FAIL: release binary not found at ${RELEASE_BINARY}" >&2
+  exit 1
+fi
 
 # ── (c) Verify embedded version without env ──
 echo "==> Verifying embedded version..."
-EMBEDDED_OUTPUT=$(SYMMEET_VERSION="" .build/release/symmeet version --json 2>/dev/null || true)
+EMBEDDED_OUTPUT=$(SYMMEET_VERSION="" "$RELEASE_BINARY" version --json 2>/dev/null || true)
 EMBEDDED_VERSION=$(echo "$EMBEDDED_OUTPUT" | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])" 2>/dev/null || true)
 
 if [ "$EMBEDDED_VERSION" != "$VERSION" ]; then
@@ -82,8 +89,8 @@ if [ "$DRY_RUN" -eq 0 ]; then
   echo "==> Signing CLI binary..."
   CODESIGN_ID="${APPLE_SIGNING_IDENTITY:-Developer ID Application}"
   codesign --sign "$CODESIGN_ID" --options runtime --timestamp \
-    .build/release/symmeet
-  codesign --verify --strict .build/release/symmeet
+    "$RELEASE_BINARY"
+  codesign --verify --strict "$RELEASE_BINARY"
 fi
 
 # ── (d) Package CLI ──

@@ -8,7 +8,8 @@ VERSION="${1:?Usage: $0 <version>}"
 VERSION="${VERSION#v}"
 ARCH="${ARCH:-arm64}"
 DIST_DIR="dist"
-BINARY=".build/release/symmeet"
+BINARY_DIR="$(swift build -c release --show-bin-path)"
+BINARY="$BINARY_DIR/symmeet"
 ARCHIVE_NAME="symmeet_v${VERSION}_darwin_${ARCH}.tar.gz"
 
 if [ ! -f "$BINARY" ]; then
