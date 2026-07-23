@@ -27,7 +27,7 @@ fi
 TEST_BINS=()
 while IFS= read -r -d '' test_bin; do
   TEST_BINS+=("$test_bin")
-done < <(find .build -type f -path "*.xctest/Contents/MacOS/*" -print0)
+done < <(find .build -type f -path "*.xctest/Contents/MacOS/*" ! -path "*.dSYM/*" -print0)
 
 if [ "${#TEST_BINS[@]}" -eq 0 ]; then
   echo "error: no .xctest bundle binaries found under .build." >&2
