@@ -169,13 +169,14 @@ jobs:
             echo "ERROR: ${APP_ASSET} not found in dist/checksums.txt" >&2
             exit 1
           fi
-          gh repo clone danieljustus/tap tap-repo -- --depth 1
+          gh repo clone danieljustus/homebrew-tap tap-repo -- --depth 1
           cd tap-repo
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           mkdir -p Casks
           sed -i '' \
             -e "s|^  url \".*\"|  url \"https://github.com/danieljustus/symaira-meet/releases/download/${TAG}/${ASSET}\"|" \
+            -e "s|^  version \".*\"|  version \"${VERSION}\"|" \
             -e "s|^  sha256 \"[0-9a-f]*\"|  sha256 \"${SHA}\"|" \
             Formula/symmeet.rb
           cat > Casks/symmeet-agent.rb <<EOF
