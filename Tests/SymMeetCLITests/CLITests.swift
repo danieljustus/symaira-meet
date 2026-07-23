@@ -125,6 +125,19 @@ final class CLITests: XCTestCase {
     XCTAssertEqual(result.stderr, "")
   }
 
+  func testVersionCheckWithJSONReturnsUpToDateForDevVersion() throws {
+    // Dev version "0.1.0-test" is rejected by StableVersion (prerelease suffix),
+    // so UpdateChecker returns nil = up-to-date without hitting the network.
+    let result = try runCLI(["version", "check", "--output-json"])
+
+    XCTAssertEqual(result.status, 0, "stderr: \(result.stderr)")
+    let json = try XCTUnwrap(jsonObject(result.stdout) as? [String: Any])
+    XCTAssertEqual(json["current_version"] as? String, "0.1.0-test")
+    XCTAssertNil(json["new_version"])
+    XCTAssertNil(json["url"])
+    XCTAssertNil(json["error"])
+  }
+
   private func runCLI(_ arguments: [String]) throws -> CLIResult {
     let binary = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
       .appending(path: ".build/debug/symmeet")

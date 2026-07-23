@@ -1,5 +1,6 @@
 import SwiftUI
 import SymMeetCore
+import SymairaUpdateCheck
 
 class AppDelegate: NSObject, NSApplicationDelegate {
   var model: AgentModel?
@@ -18,7 +19,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   private func confirmTermination() -> NSApplication.TerminateReply {
     let alert = NSAlert()
     alert.messageText = "Quit SymMeetAgent?"
-    alert.informativeText = "A recording session is currently active. Quitting will stop the session and preserve your recorded track files."
+    alert.informativeText = """
+      A recording session is currently active. \
+      Quitting will stop the session and preserve your recorded track files.
+      """
     alert.addButton(withTitle: "Stop and Quit")
     alert.addButton(withTitle: "Cancel")
 
@@ -41,6 +45,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 struct SymMeetAgentApp: App {
   @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
   @StateObject private var model = AgentModel()
+  @StateObject private var updateChecker = AgentUpdateChecker.shared
 
   init() {
     let model = AgentModel()
@@ -50,7 +55,7 @@ struct SymMeetAgentApp: App {
 
   var body: some Scene {
     MenuBarExtra {
-      RecordingMenu(model: model)
+      RecordingMenu(model: model, updateChecker: updateChecker)
         .onAppear { appDelegate.model = model }
     } label: {
       HStack(spacing: 4) {
@@ -60,6 +65,16 @@ struct SymMeetAgentApp: App {
           Text(formatTime(elapsed))
             .font(.system(.body, design: .monospaced))
         }
+        if case .available = updateChecker.status {
+          Image(systemName: "arrow.up.circle.fill")
+            .foregroundColor(.orange)
+            .font(.caption)
+        }
+      }
+    }
+    .onAppear {
+      Task {
+        await updateChecker.checkForUpdate()
       }
     }
   }

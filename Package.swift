@@ -17,6 +17,7 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/apple/swift-argument-parser.git", exact: "1.8.2"),
     .package(url: "https://github.com/argmaxinc/argmax-oss-swift", exact: "1.0.0"),
+    .package(path: "../symaira-appkit"),
   ],
   targets: [
     .target(name: "SymMeetCore"),
@@ -53,6 +54,7 @@ let package = Package(
         "SymMeetWhisperKit",
         "SymMeetSpeakerKit",
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
+        .product(name: "SymairaUpdateCheck", package: "symaira-appkit"),
       ]
     ),
     .testTarget(
