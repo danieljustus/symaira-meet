@@ -21,10 +21,16 @@ if [ ! -d "$CODECOV_DIR" ]; then
   exit 1
 fi
 
-# Locate the package test bundle binary (name-agnostic across package renames).
-TEST_BIN="$(find .build -type f -path "*PackageTests.xctest/Contents/MacOS/*PackageTests" | head -1)"
-if [ -z "$TEST_BIN" ]; then
-  echo "error: no *PackageTests.xctest binary found under .build." >&2
+# Locate every SwiftPM test-bundle binary. Swift 6 emits one bundle per test
+# target rather than a single *PackageTests bundle, so all of them must be
+# passed to llvm-cov to retain coverage across the package.
+TEST_BINS=()
+while IFS= read -r -d '' test_bin; do
+  TEST_BINS+=("$test_bin")
+done < <(find .build -type f -path "*.xctest/Contents/MacOS/*" -print0)
+
+if [ "${#TEST_BINS[@]}" -eq 0 ]; then
+  echo "error: no .xctest bundle binaries found under .build." >&2
   echo "       Run 'swift test --enable-code-coverage' (or 'make coverage') first." >&2
   exit 1
 fi
@@ -42,5 +48,10 @@ else
   exit 1
 fi
 
-xcrun llvm-cov export -format=lcov -instr-profile "$PROFDATA" "$TEST_BIN" > "$OUT"
+LLVM_COV_ARGS=("${TEST_BINS[0]}")
+for test_bin in "${TEST_BINS[@]:1}"; do
+  LLVM_COV_ARGS+=( -object "$test_bin" )
+done
+
+xcrun llvm-cov export -format=lcov -instr-profile "$PROFDATA" "${LLVM_COV_ARGS[@]}" > "$OUT"
 echo "wrote $OUT"
