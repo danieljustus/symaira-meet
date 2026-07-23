@@ -1,8 +1,8 @@
 # Known Limitations
 
-## Beta limitations
+## Current limitations
 
-This is a beta release. The following limitations are known and will be
+This is the first stable release. The following limitations are known and will be
 addressed in future releases.
 
 ### No cloud transcription
@@ -17,7 +17,7 @@ Users must explicitly start each recording session.
 
 ### Apple Silicon only
 
-The beta supports Apple Silicon (arm64) on macOS 15 or newer. Intel
+The release supports Apple Silicon (arm64) on macOS 15 or newer. Intel
 Mac support is planned for a future release.
 
 ### No live captions

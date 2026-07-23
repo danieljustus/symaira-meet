@@ -96,13 +96,20 @@ final class TransportTests: XCTestCase {
 
   // MARK: - Server handles messages
 
-  func testServerInitialize() async {
+  func testServerInitialize() async throws {
     let server = MCPServer()
     let request = JSONRPCRequest(id: .integer(1), method: "initialize")
     let response = await server.handleRequest(request)
 
     XCTAssertNil(response.error)
     XCTAssertNotNil(response.result)
+
+    let data = try JSONEncoder().encode(response)
+    let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+    let result = payload?["result"] as? [String: Any]
+    let serverInfo = result?["serverInfo"] as? [String: Any]
+    XCTAssertEqual(serverInfo?["name"] as? String, "symmeet")
+    XCTAssertEqual(serverInfo?["version"] as? String, "0.1.0")
   }
 
   func testServerToolsList() async {

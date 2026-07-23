@@ -28,8 +28,8 @@ Produces both artifacts without signing or notarization. Requires full Xcode
 for the agent app.
 
 ```bash
-scripts/build-release.sh --dry-run v0.4.0-beta.1
-scripts/release-smoke.sh dist/ v0.4.0-beta.1
+scripts/build-release.sh --dry-run v0.1.0
+scripts/release-smoke.sh dist/ v0.1.0
 (cd dist && shasum -a 256 -c checksums.txt)
 ```
 
@@ -37,10 +37,10 @@ This creates:
 
 | Artifact | Description |
 |----------|-------------|
-| `dist/symmeet_v0.4.0-beta.1_darwin_arm64.tar.gz` | CLI binary + LICENSE |
-| `dist/SymMeetAgent_v0.4.0-beta.1.dmg` | Unsigned agent app |
+| `dist/symmeet_v0.1.0_darwin_arm64.tar.gz` | CLI binary + LICENSE |
+| `dist/SymMeetAgent_v0.1.0.dmg` | Unsigned agent app |
 | `dist/sbom.spdx.json` | SPDX 2.3 SBOM |
-| `dist/symmeet_v0.4.0-beta.1_notices.tar.gz` | Third-party notices |
+| `dist/symmeet_v0.1.0_notices.tar.gz` | Third-party notices |
 | `dist/checksums.txt` | SHA-256 checksums for all binary assets |
 
 ### Version embedding
@@ -67,8 +67,8 @@ export APPLE_APP_PASSWORD=...         # app-specific password
 ```
 
 ```bash
-scripts/build-release.sh v0.4.0-beta.1
-scripts/release-smoke.sh dist/ v0.4.0-beta.1
+scripts/build-release.sh v0.1.0
+scripts/release-smoke.sh dist/ v0.1.0
 ```
 
 The signed build additionally runs:
@@ -102,15 +102,15 @@ make coverage   # runs tests with coverage and writes coverage.lcov
 2. Run the full test suite: `make clean build test lint`
 3. Create and push a version tag:
    ```bash
-   git tag v0.4.0-beta.1
-   git push origin v0.4.0-beta.1
+   git tag v0.1.0
+   git push origin v0.1.0
    ```
 4. The `release.yml` workflow:
    - Imports the `.p12` certificate into an ephemeral keychain
    - Runs `scripts/build-release.sh` (signed path)
    - Verifies code signing, notarization, and checksums
    - Creates build provenance attestations
-   - Creates a GitHub prerelease with all assets
+   - Creates a stable GitHub release with all assets
 5. Verify the release on GitHub: https://github.com/danieljustus/symaira-meet/releases
 6. Smoke-test the published assets on a clean machine:
    ```bash
@@ -135,7 +135,7 @@ The CLI embeds the version at compile time. The `version --json` handshake
 is the source of truth for consumers:
 
 ```json
-{"tool":"symmeet","version":"0.4.0-beta.1","schema_version":1}
+{"tool":"symmeet","version":"0.1.0","schema_version":1}
 ```
 
 ## Signing and notarization

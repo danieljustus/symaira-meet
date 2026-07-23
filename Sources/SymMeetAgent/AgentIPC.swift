@@ -7,6 +7,6 @@ public final class AgentIPC: Sendable {
 
   public func notifyActiveSession(meetingID: UUID) {
     // Notify local daemon/listeners of active recording session.
-    // In beta, communications are via standardized local files.
+    // In the initial release, communications are via standardized local files.
   }
 }

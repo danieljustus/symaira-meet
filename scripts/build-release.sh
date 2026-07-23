@@ -17,7 +17,7 @@ done
 
 if [ -z "$VERSION" ]; then
   echo "Usage: $0 [--dry-run] <version>" >&2
-  echo "  e.g. $0 --dry-run v0.4.0-beta.1" >&2
+  echo "  e.g. $0 --dry-run v0.1.0" >&2
   exit 1
 fi
 

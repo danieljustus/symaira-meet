@@ -8,7 +8,7 @@
 artifacts. It runs on macOS 15 or newer (Apple Silicon and Intel) and does not
 require another Symaira binary, a cloud account, or telemetry.
 
-> Current state: this beta ships local audio capture, transcription, model
+> Current state: the first stable release ships local audio capture, transcription, model
 > management, export formats, a menu-bar recording agent, and an MCP server.
 > Meeting content stays on the device by default. Cloud transcription, accounts,
 > automatic meeting detection, live captions, Intel Mac support, and encryption at

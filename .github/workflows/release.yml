@@ -49,7 +49,7 @@ jobs:
             fi
           done
           if [ "$MISSING" -eq 1 ]; then
-            echo "All Apple signing secrets and the Homebrew tap token are required for signed beta releases." >&2
+            echo "All Apple signing secrets and the Homebrew tap token are required for signed releases." >&2
             exit 1
           fi
 
@@ -124,7 +124,7 @@ jobs:
             dist/*.dmg
             dist/sbom.spdx.json
 
-      - name: Check existing prerelease
+      - name: Check existing release
         id: release_check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -136,11 +136,11 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create prerelease
+      - name: Create release
         if: steps.release_check.outputs.exists != 'true'
         uses: softprops/action-gh-release@c12583777ecdfd3be55c69cf75464299dc01057e # v3
         with:
-          prerelease: true
+          prerelease: false
           generate_release_notes: true
           files: |
             dist/symmeet_*.tar.gz
@@ -207,11 +207,11 @@ jobs:
           gh auth setup-git
           git push
 
-      - name: Publish prerelease
+      - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.version.outputs.TAG }}
-        run: gh release edit "$TAG" --repo danieljustus/symaira-meet --draft=false --prerelease=true
+        run: gh release edit "$TAG" --repo danieljustus/symaira-meet --draft=false --prerelease=false
 
       - name: Cleanup keychain
         if: always()

@@ -1,6 +1,6 @@
 # Privacy and local-first operation
 
-`symmeet` is local-first in this beta. Meeting audio, transcript artifacts,
+`symmeet` is local-first in its first stable release. Meeting audio, transcript artifacts,
 speaker labels, and derived Markdown stay on the device by default. The product
 does not include telemetry, cloud transcription, accounts, or remote diagnostic
 uploads.
@@ -24,5 +24,5 @@ deletion requires an explicit command or reviewed UI action.
 
 Structured logs retain only event/status and opaque meeting or job identifiers.
 They redact transcript text, names, calendar details, provider credentials, and
-absolute user paths. Encryption at rest is a post-beta option; it is not
+absolute user paths. Encryption at rest is a future option; it is not
 claimed or silently improvised here.

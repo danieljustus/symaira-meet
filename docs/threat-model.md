@@ -27,7 +27,7 @@
 | Log leakage | Emit only structured status/opaque IDs and filter content, people, calendar, credentials, and absolute paths. |
 | Cross-process race | Use actor-owned state and atomic sibling-file writes with rename; a future capture agent must not share mutable authorization state. |
 
-## Accepted beta risks
+## Accepted initial-release risks
 
 This milestone does not ship encryption at rest, a media decoder sandbox,
 cryptographic model verification, or a capture UI. Those omissions are visible
