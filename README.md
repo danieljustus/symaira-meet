@@ -4,6 +4,8 @@
 [![License](https://img.shields.io/github/license/danieljustus/symaira-meet)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/danieljustus/symaira-meet)](https://github.com/danieljustus/symaira-meet/releases/latest)
 
+![Symaira Meet social preview](docs/assets/social-preview.png)
+
 `symmeet` is a local-first, standalone command-line tool for durable meeting
 artifacts. It runs on macOS 15 or newer (Apple Silicon and Intel) and does not
 require another Symaira binary, a cloud account, or telemetry.
@@ -51,12 +53,36 @@ CI → run → Artifacts). With full Xcode, `make coverage` produces the same
 
 ```text
 symmeet version [--json]
+symmeet version check [--force] [--output-json]
 symmeet doctor [--json]
 symmeet config path [--json]
 symmeet meeting list [--json]
 symmeet meeting show <meeting_id> [--json]
 symmeet meeting trash <meeting_id> [--json]
 symmeet meeting restore <meeting_id> [--json]
+symmeet model list [--json]
+symmeet model install <model> [--json]
+symmeet model remove <model> [--json]
+symmeet record [--json]
+symmeet capture sources [--json]
+symmeet permissions status [--json]
+symmeet permissions request <mic|screen> [--json]
+symmeet transcribe <file> [--json]
+symmeet process <meeting_id> [--json]
+symmeet diarize <meeting_id> [--json]
+symmeet speaker list <meeting_id> [--json]
+symmeet speaker label <meeting_id> ... [--json]
+symmeet speaker merge <meeting_id> ... [--json]
+symmeet speaker split <meeting_id> ... [--json]
+symmeet speaker reset <meeting_id> [--json]
+symmeet export <meeting_id> [--json]
+symmeet job list [--json]
+symmeet job show <job_id> [--json]
+symmeet job cancel <job_id> [--json]
+symmeet job retry <job_id> [--json]
+symmeet mcp
+symmeet capabilities [--json]
+symmeet benchmark <file> [--json]
 symmeet completion <bash|fish|zsh>
 ```
 

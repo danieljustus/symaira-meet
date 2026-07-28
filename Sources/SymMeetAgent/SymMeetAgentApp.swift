@@ -18,7 +18,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
   private func confirmTermination() -> NSApplication.TerminateReply {
     let alert = NSAlert()
-    alert.messageText = "Quit SymMeetAgent?"
+    alert.messageText = "Quit Symaira Meet?"
     alert.informativeText = """
       A recording session is currently active. \
       Quitting will stop the session and preserve your recorded track files.
@@ -39,6 +39,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
       return .terminateCancel
     }
   }
+
+  // Keep running after last window closes (recording may continue)
+  func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+    false
+  }
 }
 
 @main
@@ -54,6 +59,19 @@ struct SymMeetAgentApp: App {
   }
 
   var body: some Scene {
+    // Main application window with Dock presence
+    WindowGroup("Symaira Meet") {
+      MainWindowView(model: model, updateChecker: updateChecker)
+        .onAppear {
+          appDelegate.model = model
+          Task { await updateChecker.checkForUpdate() }
+        }
+    }
+    .windowResizability(.contentSize)
+    .defaultSize(width: 720, height: 560)
+    .handlesExternalEvents(matching: [])
+
+    // Companion menu-bar extra for quick status and controls
     MenuBarExtra {
       RecordingMenu(model: model, updateChecker: updateChecker)
         .onAppear { appDelegate.model = model }
@@ -72,20 +90,11 @@ struct SymMeetAgentApp: App {
         }
       }
     }
-    .onAppear {
-      Task {
-        await updateChecker.checkForUpdate()
-      }
-    }
   }
 
   private var isRecording: Bool {
-    switch model.state {
-    case .recording:
-      return true
-    default:
-      return false
-    }
+    if case .recording = model.state { return true }
+    return false
   }
 
   private func formatTime(_ time: TimeInterval) -> String {
