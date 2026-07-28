@@ -97,18 +97,9 @@ fi
 # ── Create DMG ──
 echo "==> Creating DMG..."
 DMG_NAME="${APP_NAME}_v${VERSION}.dmg"
-DMG_STAGE=$(mktemp -d)
-
-ln -s /Applications "$DMG_STAGE/Applications"
-cp -R "$DIST_DIR/${APP_NAME}.app" "$DMG_STAGE/"
-
 rm -f "$DIST_DIR/$DMG_NAME"
-hdiutil create \
-  -volname "$APP_NAME" \
-  -srcfolder "$DMG_STAGE" \
-  -ov -format UDZO \
+scripts/create-symaira-dmg.sh \
+  "$DIST_DIR/${APP_NAME}.app" \
   "$DIST_DIR/$DMG_NAME" \
-  2>/dev/null
-
-rm -rf "$DMG_STAGE"
+  "Symaira Meet"
 echo "Created ${DIST_DIR}/${DMG_NAME}"
