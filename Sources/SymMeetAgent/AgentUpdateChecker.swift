@@ -45,7 +45,7 @@ public struct UserDefaultsSkippedVersionStore: SkippedVersionStore, @unchecked S
 /// - Never blocks the launch path: errors are silently absorbed and reported
 ///   as `.unknown` / `.error` without crashing or blocking the main thread.
 @MainActor
-public final class AgentUpdateChecker {
+public final class AgentUpdateChecker: ObservableObject {
   public static let shared = AgentUpdateChecker()
 
   @Published public private(set) var status: AgentUpdateStatus = .unknown

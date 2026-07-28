@@ -54,20 +54,10 @@ if [ -n "$APP" ]; then
 
   echo "==> Rebuilding DMG with stapled app..."
   DMG_NAME=$(basename "$DMG")
-  DMG_STAGE=$(mktemp -d)
-
-  ln -s /Applications "$DMG_STAGE/Applications"
-  cp -R "$APP" "$DMG_STAGE/"
-
-  hdiutil create \
-    -volname "SymMeetAgent" \
-    -srcfolder "$DMG_STAGE" \
-    -ov -format UDZO \
+  scripts/create-symaira-dmg.sh \
+    "$APP" \
     "$DIST_DIR/$DMG_NAME" \
-    2>/dev/null
-
-  rm -rf "$DMG_STAGE"
-  DMG_STAGE=""
+    "Symaira Meet"
 
   echo "==> Re-submitting rebuilt DMG for notarization..."
   xcrun notarytool submit "$DIST_DIR/$DMG_NAME" \
