@@ -38,7 +38,7 @@ extension SymMeet {
       do {
         manifest = try await store.load(meetingID: meetingID)
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
 
       let normalizedID = manifest.meetingID.uuidString.lowercased()
@@ -52,6 +52,7 @@ extension SymMeet {
       } else {
         throw CLIError(
           exitCode: CLIExit.usage.rawValue,
+          code: "file_not_found",
           message: "Invalid --speakers value '\(speakers)'. Use 'auto' or a positive integer.")
       }
 
@@ -97,7 +98,7 @@ extension SymMeet {
           Output.writeLine("Export: \(state.status(of: .export).rawValue)")
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }

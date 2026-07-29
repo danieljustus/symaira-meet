@@ -24,7 +24,13 @@ struct SymMeet: AsyncParsableCommand {
         try command.run()
       }
     } catch let error as CLIError {
-      Output.writeError(error.message)
+      if error.isJSON {
+        let envelope = ErrorEnvelope(
+          error: .init(code: error.code, message: error.message))
+        try? Output.writeJSON(envelope)
+      } else {
+        Output.writeError(error.message)
+      }
       Darwin.exit(error.exitCode)
     } catch {
       // Covers CleanExit (--help/--version, always a clean exit) and

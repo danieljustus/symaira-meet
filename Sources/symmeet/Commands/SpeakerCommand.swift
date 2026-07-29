@@ -63,7 +63,7 @@ extension SymMeet {
           }
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
@@ -122,7 +122,7 @@ extension SymMeet {
           Output.writeLine("Labeled \(speakerID) as '\(label)'.")
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
@@ -179,7 +179,7 @@ extension SymMeet {
           Output.writeLine("Merged \(fromID) into \(intoID).")
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
@@ -211,6 +211,7 @@ extension SymMeet {
         guard let segmentUUID = UUID(uuidString: segment) else {
           throw CLIError(
             exitCode: CLIExit.usage.rawValue,
+            code: "speaker_not_found",
             message: "Invalid segment UUID: '\(segment)'.")
         }
 
@@ -247,7 +248,7 @@ extension SymMeet {
           Output.writeLine("Split segment \(segment) from \(speakerID).")
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
@@ -293,7 +294,7 @@ extension SymMeet {
           Output.writeLine("Reset all speaker edits for \(normalizedID).")
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
