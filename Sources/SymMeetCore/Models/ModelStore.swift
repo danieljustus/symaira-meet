@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 public actor ModelStore {
@@ -49,9 +50,20 @@ public actor ModelStore {
     let staging = root.appending(path: ".\(descriptor.id).publishing-\(UUID().uuidString)")
     do {
       try FileManager.default.copyItem(at: temporaryDirectory, to: staging)
+
+      let payload = staging.appending(path: "payload", directoryHint: .isDirectory)
+      let computedSHA = try sha256OfDirectory(at: payload)
+
+      if let expected = descriptor.expectedSHA256, expected != computedSHA {
+        throw ModelError.corruptModel
+      }
+
       try writeMetadata(
         ModelRecord(
-          descriptor: descriptor, status: .installed, installedAt: installedAt, sha256: sha256),
+          descriptor: descriptor,
+          status: .installed,
+          installedAt: installedAt,
+          sha256: sha256 ?? computedSHA),
         to: staging)
       try FileManager.default.moveItem(at: staging, to: destination)
       try? FileManager.default.removeItem(at: temporaryDirectory)
@@ -81,6 +93,12 @@ public actor ModelStore {
     let payload = directory.appending(path: "payload", directoryHint: .isDirectory)
     guard FileManager.default.fileExists(atPath: payload.path) else {
       throw ModelError.corruptModel
+    }
+    if let storedSHA = metadata.sha256 {
+      let computedSHA = try sha256OfDirectory(at: payload)
+      guard computedSHA == storedSHA else {
+        throw ModelError.corruptModel
+      }
     }
     return ModelRecord(
       descriptor: descriptor,
@@ -184,6 +202,37 @@ public actor ModelStore {
     try ContractCodec.decoder().decode(
       ModelRecord.self,
       from: Data(contentsOf: directory.appending(path: "model.json")))
+  }
+
+  private func sha256OfDirectory(at url: URL) throws -> String {
+    let fileManager = FileManager.default
+    guard let enumerator = fileManager.enumerator(
+      at: url,
+      includingPropertiesForKeys: [.isRegularFileKey])
+    else {
+      throw ModelError.operationFailed
+    }
+
+    var entries: [(String, URL)] = []
+    while let fileURL = enumerator.nextObject() as? URL {
+      guard
+        (try? fileURL.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true
+      else { continue }
+      let relativePath = String(fileURL.path.dropFirst(url.path.count + 1))
+      entries.append((relativePath, fileURL))
+    }
+    entries.sort { $0.0 < $1.0 }
+
+    var hasher = SHA256()
+    for (relativePath, fileURL) in entries {
+      hasher.update(data: Data(relativePath.utf8))
+      let handle = try FileHandle(forReadingFrom: fileURL)
+      defer { try? handle.close() }
+      while let chunk = try handle.read(upToCount: 1024 * 1024), !chunk.isEmpty {
+        hasher.update(data: chunk)
+      }
+    }
+    return hasher.finalize().map { String(format: "%02x", $0) }.joined()
   }
 
   private static var currentArchitecture: String {

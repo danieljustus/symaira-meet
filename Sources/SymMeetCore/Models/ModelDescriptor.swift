@@ -7,6 +7,7 @@ public struct ModelDescriptor: Codable, Equatable, Hashable, Sendable {
   public let source: String
   public let license: String
   public let expectedSizeBytes: Int64
+  public let expectedSHA256: String?
   public let upstreamRevision: String
   public let supportedArchitectures: [String]
 
@@ -17,6 +18,7 @@ public struct ModelDescriptor: Codable, Equatable, Hashable, Sendable {
     source: String,
     license: String,
     expectedSizeBytes: Int64,
+    expectedSHA256: String? = nil,
     upstreamRevision: String,
     supportedArchitectures: [String]
   ) {
@@ -26,6 +28,7 @@ public struct ModelDescriptor: Codable, Equatable, Hashable, Sendable {
     self.source = source
     self.license = license
     self.expectedSizeBytes = expectedSizeBytes
+    self.expectedSHA256 = expectedSHA256
     self.upstreamRevision = upstreamRevision
     self.supportedArchitectures = supportedArchitectures
   }
@@ -37,6 +40,7 @@ public struct ModelDescriptor: Codable, Equatable, Hashable, Sendable {
     case source
     case license
     case expectedSizeBytes = "expected_size_bytes"
+    case expectedSHA256 = "expected_sha256"
     case upstreamRevision = "upstream_revision"
     case supportedArchitectures = "supported_architectures"
   }
