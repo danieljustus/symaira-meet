@@ -105,8 +105,10 @@ final class CLITests: XCTestCase {
     XCTAssertFalse(unknown.stderr.isEmpty)
 
     XCTAssertEqual(missing.status, 1)
-    XCTAssertEqual(missing.stdout, "")
-    XCTAssertFalse(missing.stderr.contains(root.path))
+    // #89: --json errors now emit a JSON error document to stdout
+    XCTAssertFalse(missing.stdout.isEmpty, "JSON error document should be on stdout in --json mode")
+    XCTAssertTrue(missing.stdout.contains("\"error\""), "stdout should contain error envelope")
+    XCTAssertEqual(missing.stderr, "", "stderr should be clean in --json mode")
 
     XCTAssertEqual(invalidID.status, 2)
     XCTAssertEqual(invalidID.stdout, "")
