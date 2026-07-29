@@ -139,6 +139,79 @@ final class SecurityHardeningTests: XCTestCase {
     XCTAssertTrue(json.contains("created_at"), "Must use snake_case")
     XCTAssertFalse(json.contains("meetingID"), "Must not use camelCase")
   }
+
+  // MARK: - POSIX permissions
+
+  func testMeetingDirectoryHasMode0700() throws {
+    let root = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let store = MeetingStore(dataRoot: root)
+    let manifest = MeetingManifest(
+      meetingID: UUID(),
+      source: .imported,
+      createdAt: Date(),
+      updatedAt: Date(),
+      consent: ConsentState(status: .required),
+      retention: RetentionMetadata(policy: .keep))
+    try store.create(manifest)
+
+    let meetingID = manifest.meetingID.uuidString.lowercased()
+    let meetingDir = root.appending(path: "meetings/\(meetingID)", directoryHint: .isDirectory)
+
+    let attrs = try FileManager.default.attributesOfItem(atPath: meetingDir.path)
+    let permissions = attrs[.posixPermissions] as? Int
+    XCTAssertEqual(permissions, 0o700, "Meeting directory must have mode 0700")
+  }
+
+  func testWrittenManifestHasMode0600() throws {
+    let root = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let store = MeetingStore(dataRoot: root)
+    let manifest = MeetingManifest(
+      meetingID: UUID(),
+      source: .imported,
+      createdAt: Date(),
+      updatedAt: Date(),
+      consent: ConsentState(status: .required),
+      retention: RetentionMetadata(policy: .keep))
+    try store.create(manifest)
+
+    let meetingID = manifest.meetingID.uuidString.lowercased()
+    let manifestURL =
+      root
+      .appending(path: "meetings/\(meetingID)/manifest.json", directoryHint: .notDirectory)
+
+    let attrs = try FileManager.default.attributesOfItem(atPath: manifestURL.path)
+    let permissions = attrs[.posixPermissions] as? Int
+    XCTAssertEqual(permissions, 0o600, "Written manifest must have mode 0600")
+  }
+
+  func testModelRootCreatedWithMode0700() throws {
+    let root = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let store = ModelStore(root: root)
+    // Force prepareRoot by listing (which calls prepareRoot internally)
+    _ = try store.list()
+
+    let attrs = try FileManager.default.attributesOfItem(atPath: root.path)
+    let permissions = attrs[.posixPermissions] as? Int
+    XCTAssertEqual(permissions, 0o700, "Model root must have mode 0700")
+  }
+
+  func testDataRootCreatedWithMode0700() throws {
+    let root = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let lock = DataRootLock(dataRoot: root)
+    _ = try lock.acquire()
+
+    let attrs = try FileManager.default.attributesOfItem(atPath: root.path)
+    let permissions = attrs[.posixPermissions] as? Int
+    XCTAssertEqual(permissions, 0o700, "Data root must have mode 0700")
+  }
 }
 
 // MARK: - Test helpers
@@ -155,4 +228,11 @@ private func validateMeetingID(_ id: String) throws {
   else {
     throw StoreError.invalidMeetingID
   }
+}
+
+private func makeTemporaryDirectory() throws -> URL {
+  let directory = FileManager.default.temporaryDirectory
+    .appending(path: "symmeet-tests-\(UUID().uuidString)", directoryHint: .isDirectory)
+  try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+  return directory
 }

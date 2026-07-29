@@ -12,6 +12,8 @@ enum AtomicFileWriter {
       throw StoreError.operationFailed
     }
 
+    chmod(temporary.path, 0o600)
+
     do {
       let handle = try FileHandle(forWritingTo: temporary)
       try handle.write(contentsOf: data)

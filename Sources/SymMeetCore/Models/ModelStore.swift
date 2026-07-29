@@ -157,6 +157,8 @@ public actor ModelStore {
   private func prepareRoot() throws {
     do {
       try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+      try FileManager.default.setAttributes(
+        [.posixPermissions: 0o700], ofItemAtPath: root.path)
     } catch {
       throw ModelError.operationFailed
     }

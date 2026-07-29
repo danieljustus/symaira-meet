@@ -204,6 +204,8 @@ public actor DataRootLock {
     do {
       try FileManager.default.createDirectory(
         at: layout.dataRoot, withIntermediateDirectories: true)
+      try FileManager.default.setAttributes(
+        [.posixPermissions: 0o700], ofItemAtPath: layout.dataRoot.path)
     } catch {
       throw JobError.operationFailed
     }
