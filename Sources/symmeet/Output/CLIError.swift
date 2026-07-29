@@ -1,4 +1,5 @@
 import Foundation
+import SymMeetCapture
 import SymMeetCore
 import SymMeetWhisperKit
 
@@ -47,8 +48,54 @@ struct CLIError: Error {
       return CLIError(
         exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
     }
+    if let error = error as? PrivacyError {
+      switch error {
+      case .invalidInteractiveAttestation, .invalidAuthorizationRecord,
+        .authorizationAlreadyUsed, .authorizationExpired:
+        return CLIError(
+          exitCode: CLIExit.permissionDenied.rawValue, message: error.localizedDescription)
+      case .authorizationNotForSession, .localProcessingOnly, .recordingNotActive:
+        return CLIError(
+          exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
+      }
+    }
+    if let error = error as? CaptureError {
+      switch error {
+      case .microphoneDenied, .screenRecordingDenied:
+        return CLIError(
+          exitCode: CLIExit.permissionDenied.rawValue, message: error.localizedDescription)
+      case .microphoneRestricted, .screenRecordingUnavailable, .sourceNotFound,
+        .osVersionUnsupported, .captureSessionAlreadyActive, .captureSessionNotActive,
+        .noAuthorizationRecord, .bufferOverrun, .trackWriteFailed, .interruptedBySystem:
+        return CLIError(
+          exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
+      }
+    }
+    if let error = error as? AudioError {
+      switch error {
+      case .notLocalFile, .outsideApprovedPath, .missingFile, .directoryNotAllowed,
+        .unsupportedContainer, .unsupportedCodec, .zeroLength, .invalidAudioFormat:
+        return CLIError(
+          exitCode: CLIExit.usage.rawValue, message: error.localizedDescription)
+      case .missingAudioTrack, .protectedMedia, .exceedsByteLimit, .exceedsDurationLimit,
+        .destinationExists, .cancelled, .operationFailed:
+        return CLIError(
+          exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
+      }
+    }
+    if let error = error as? ContractError {
+      switch error {
+      case .invalidIdentifier, .invalidStateTransition, .invalidTimeRange:
+        return CLIError(
+          exitCode: CLIExit.usage.rawValue, message: error.localizedDescription)
+      case .unsupportedSchemaVersion:
+        return CLIError(
+          exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
+      }
+    }
     guard let storeError = error as? StoreError else {
-      return CLIError(exitCode: CLIExit.runtimeFailure.rawValue, message: "Command failed.")
+      return CLIError(
+        exitCode: CLIExit.runtimeFailure.rawValue, message: error.localizedDescription)
     }
 
     switch storeError {

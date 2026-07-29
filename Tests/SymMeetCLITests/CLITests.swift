@@ -138,7 +138,20 @@ final class CLITests: XCTestCase {
     XCTAssertNil(json["error"])
   }
 
-  private func runCLI(_ arguments: [String]) throws -> CLIResult {
+  func testRecordWithoutFreshAttestationExits3WithConsentMessage() throws {
+    // Running record without --yes and with stdin closed should result in
+    // a consent-refusal error (exit code 3 / permissionDenied).
+    let result = try runCLI(["record", "--purpose", "test-attestation"], closeStdin: true)
+    XCTAssertEqual(result.status, 3, "stderr: \(result.stderr)")
+    XCTAssertTrue(
+      result.stderr.localizedCaseInsensitiveContains("authorization")
+        || result.stderr.localizedCaseInsensitiveContains("attestation")
+        || result.stderr.localizedCaseInsensitiveContains("consent"),
+      "Expected a consent/permission message but got: \(result.stderr)")
+    XCTAssertEqual(result.stdout, "")
+  }
+
+  private func runCLI(_ arguments: [String], closeStdin: Bool = false) throws -> CLIResult {
     let binary = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
       .appending(path: ".build/debug/symmeet")
     XCTAssertTrue(FileManager.default.isExecutableFile(atPath: binary.path))
@@ -152,6 +165,11 @@ final class CLITests: XCTestCase {
       environment, uniquingKeysWith: { _, new in new })
     process.standardOutput = stdout
     process.standardError = stderr
+    if closeStdin {
+      let stdinPipe = Pipe()
+      stdinPipe.fileHandleForWriting.closeFile()
+      process.standardInput = stdinPipe
+    }
     try process.run()
     process.waitUntilExit()
 
