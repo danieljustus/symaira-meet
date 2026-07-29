@@ -142,7 +142,7 @@ final class SecurityHardeningTests: XCTestCase {
 
   // MARK: - POSIX permissions
 
-  func testMeetingDirectoryHasMode0700() throws {
+  func testMeetingDirectoryHasMode0700() async throws {
     let root = try makeTemporaryDirectory()
     defer { try? FileManager.default.removeItem(at: root) }
 
@@ -154,7 +154,7 @@ final class SecurityHardeningTests: XCTestCase {
       updatedAt: Date(),
       consent: ConsentState(status: .required),
       retention: RetentionMetadata(policy: .keep))
-    try store.create(manifest)
+    try await store.create(manifest)
 
     let meetingID = manifest.meetingID.uuidString.lowercased()
     let meetingDir = root.appending(path: "meetings/\(meetingID)", directoryHint: .isDirectory)
@@ -164,7 +164,7 @@ final class SecurityHardeningTests: XCTestCase {
     XCTAssertEqual(permissions, 0o700, "Meeting directory must have mode 0700")
   }
 
-  func testWrittenManifestHasMode0600() throws {
+  func testWrittenManifestHasMode0600() async throws {
     let root = try makeTemporaryDirectory()
     defer { try? FileManager.default.removeItem(at: root) }
 
@@ -176,7 +176,7 @@ final class SecurityHardeningTests: XCTestCase {
       updatedAt: Date(),
       consent: ConsentState(status: .required),
       retention: RetentionMetadata(policy: .keep))
-    try store.create(manifest)
+    try await store.create(manifest)
 
     let meetingID = manifest.meetingID.uuidString.lowercased()
     let manifestURL =
@@ -188,25 +188,25 @@ final class SecurityHardeningTests: XCTestCase {
     XCTAssertEqual(permissions, 0o600, "Written manifest must have mode 0600")
   }
 
-  func testModelRootCreatedWithMode0700() throws {
+  func testModelRootCreatedWithMode0700() async throws {
     let root = try makeTemporaryDirectory()
     defer { try? FileManager.default.removeItem(at: root) }
 
     let store = ModelStore(root: root)
     // Force prepareRoot by listing (which calls prepareRoot internally)
-    _ = try store.list()
+    _ = try await store.list()
 
     let attrs = try FileManager.default.attributesOfItem(atPath: root.path)
     let permissions = attrs[.posixPermissions] as? Int
     XCTAssertEqual(permissions, 0o700, "Model root must have mode 0700")
   }
 
-  func testDataRootCreatedWithMode0700() throws {
+  func testDataRootCreatedWithMode0700() async throws {
     let root = try makeTemporaryDirectory()
     defer { try? FileManager.default.removeItem(at: root) }
 
     let lock = DataRootLock(dataRoot: root)
-    _ = try lock.acquire()
+    _ = try await lock.acquire()
 
     let attrs = try FileManager.default.attributesOfItem(atPath: root.path)
     let permissions = attrs[.posixPermissions] as? Int
