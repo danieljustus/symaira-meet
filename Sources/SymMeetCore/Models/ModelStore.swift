@@ -63,7 +63,7 @@ public actor ModelStore {
           descriptor: descriptor,
           status: .installed,
           installedAt: installedAt,
-          sha256: sha256 ?? computedSHA),
+          sha256: computedSHA),
         to: staging)
       try FileManager.default.moveItem(at: staging, to: destination)
       try? FileManager.default.removeItem(at: temporaryDirectory)
