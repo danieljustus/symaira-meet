@@ -6,3 +6,4 @@ DerivedData/
 SymMeetAgent.xcodeproj/
 Generated/
 dist/
+.worktrees/
