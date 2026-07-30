@@ -30,7 +30,9 @@ extension SymMeet {
       let sourceURL = URL(fileURLWithPath: file)
 
       guard FileManager.default.fileExists(atPath: sourceURL.path) else {
-        throw CLIError(exitCode: CLIExit.usage.rawValue, message: "File not found: \(file)")
+        throw CLIError(
+          exitCode: CLIExit.usage.rawValue, code: "file_not_found",
+          message: "File not found: \(file)")
       }
 
       let modelStore = ModelStore()
@@ -39,11 +41,11 @@ extension SymMeet {
         record = try await modelStore.verify(id: model)
       } catch ModelError.modelNotInstalled {
         throw CLIError(
-          exitCode: CLIExit.runtimeFailure.rawValue,
+          exitCode: CLIExit.runtimeFailure.rawValue, code: "model_not_installed",
           message:
             "Model '\(model)' is not installed. Run: symmeet model install \(model)")
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
 
       let languageValue = language == "auto" ? nil : language
@@ -53,7 +55,7 @@ extension SymMeet {
       do {
         engine = try await WhisperKitEngine(modelID: model, modelStore: modelStore)
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
 
       // Cooperative SIGINT handling: request cancellation, do not terminate
@@ -103,17 +105,21 @@ extension SymMeet {
           Output.writeLine("Status: \(outcome.status.rawValue)")
         }
       } catch PipelineError.engineFailed(let message) {
-        throw CLIError(exitCode: CLIExit.runtimeFailure.rawValue, message: message)
+        throw CLIError(
+          exitCode: CLIExit.runtimeFailure.rawValue, code: "engine_failed",
+          message: message)
       } catch PipelineError.engineProducedNoCompletion {
         throw CLIError(
           exitCode: CLIExit.runtimeFailure.rawValue,
+          code: "engine_produced_no_completion",
           message: PipelineError.engineProducedNoCompletion.localizedDescription)
       } catch PipelineError.missingOriginalAsset {
         throw CLIError(
           exitCode: CLIExit.runtimeFailure.rawValue,
+          code: "missing_original_asset",
           message: PipelineError.missingOriginalAsset.localizedDescription)
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }

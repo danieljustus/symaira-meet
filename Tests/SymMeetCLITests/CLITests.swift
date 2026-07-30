@@ -105,8 +105,10 @@ final class CLITests: XCTestCase {
     XCTAssertFalse(unknown.stderr.isEmpty)
 
     XCTAssertEqual(missing.status, 1)
-    XCTAssertEqual(missing.stdout, "")
-    XCTAssertFalse(missing.stderr.contains(root.path))
+    // #89: --json errors now emit a JSON error document to stdout
+    XCTAssertFalse(missing.stdout.isEmpty, "JSON error document should be on stdout in --json mode")
+    XCTAssertTrue(missing.stdout.contains("\"error\""), "stdout should contain error envelope")
+    XCTAssertEqual(missing.stderr, "", "stderr should be clean in --json mode")
 
     XCTAssertEqual(invalidID.status, 2)
     XCTAssertEqual(invalidID.stdout, "")
@@ -138,7 +140,20 @@ final class CLITests: XCTestCase {
     XCTAssertNil(json["error"])
   }
 
-  private func runCLI(_ arguments: [String]) throws -> CLIResult {
+  func testRecordWithoutFreshAttestationExits3WithConsentMessage() throws {
+    // Running record without --yes and with stdin closed should result in
+    // a consent-refusal error (exit code 3 / permissionDenied).
+    let result = try runCLI(["record", "--purpose", "test-attestation"], closeStdin: true)
+    XCTAssertEqual(result.status, 3, "stderr: \(result.stderr)")
+    XCTAssertTrue(
+      result.stderr.localizedCaseInsensitiveContains("authorization")
+        || result.stderr.localizedCaseInsensitiveContains("attestation")
+        || result.stderr.localizedCaseInsensitiveContains("consent"),
+      "Expected a consent/permission message but got: \(result.stderr)")
+    XCTAssertEqual(result.stdout, "")
+  }
+
+  private func runCLI(_ arguments: [String], closeStdin: Bool = false) throws -> CLIResult {
     let binary = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
       .appending(path: ".build/debug/symmeet")
     XCTAssertTrue(FileManager.default.isExecutableFile(atPath: binary.path))
@@ -152,6 +167,11 @@ final class CLITests: XCTestCase {
       environment, uniquingKeysWith: { _, new in new })
     process.standardOutput = stdout
     process.standardError = stderr
+    if closeStdin {
+      let stdinPipe = Pipe()
+      stdinPipe.fileHandleForWriting.closeFile()
+      process.standardInput = stdinPipe
+    }
     try process.run()
     process.waitUntilExit()
 

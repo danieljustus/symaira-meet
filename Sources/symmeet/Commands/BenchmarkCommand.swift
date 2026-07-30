@@ -23,6 +23,7 @@ extension SymMeet {
       guard FileManager.default.fileExists(atPath: file) else {
         throw CLIError(
           exitCode: CLIExit.usage.rawValue,
+          code: "file_not_found",
           message: "File not found: \(file)")
       }
 
@@ -33,9 +34,10 @@ extension SymMeet {
       } catch ModelError.modelNotInstalled {
         throw CLIError(
           exitCode: CLIExit.usage.rawValue,
+          code: "model_not_installed",
           message: "Model '\(model)' is not installed. Run: symmeet model install \(model)")
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
 
       let startTime = Date()

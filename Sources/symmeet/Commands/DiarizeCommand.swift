@@ -30,7 +30,7 @@ extension SymMeet {
         let manifest = try await store.load(meetingID: meetingID)
         normalizedID = manifest.meetingID.uuidString.lowercased()
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
 
       let numberOfSpeakers: Int?
@@ -40,7 +40,7 @@ extension SymMeet {
         numberOfSpeakers = count
       } else {
         throw CLIError(
-          exitCode: CLIExit.usage.rawValue,
+          exitCode: CLIExit.usage.rawValue, code: "invalid_speakers",
           message: "Invalid --speakers value '\(speakers)'. Use 'auto' or a positive integer.")
       }
 
@@ -76,7 +76,7 @@ extension SymMeet {
           Output.writeLine("State: \(outcome.state.status(of: .diarization).rawValue)")
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }

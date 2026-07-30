@@ -22,3 +22,14 @@ enum Output {
     FileHandle.standardError.write(Data((value + "\n").utf8))
   }
 }
+
+/// Machine-readable error envelope emitted on stdout when a --json
+/// invocation fails.  Stable codes come from CLIError.code.
+struct ErrorEnvelope: Encodable {
+  let error: ErrorPayload
+
+  struct ErrorPayload: Encodable {
+    let code: String
+    let message: String
+  }
+}
