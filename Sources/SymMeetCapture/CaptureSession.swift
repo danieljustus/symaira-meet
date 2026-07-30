@@ -106,6 +106,8 @@ public actor CaptureSession {
 
     try FileManager.default.createDirectory(
       at: configuration.outputDirectory, withIntermediateDirectories: true)
+    try FileManager.default.setAttributes(
+      [.posixPermissions: 0o700], ofItemAtPath: configuration.outputDirectory.path)
 
     let sysWriter = TrackWriter(url: systemURL)
     let micW = TrackWriter(url: micURL)

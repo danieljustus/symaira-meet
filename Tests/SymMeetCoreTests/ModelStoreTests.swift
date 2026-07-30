@@ -19,7 +19,8 @@ final class ModelStoreTests: XCTestCase {
     let published = try await store.publish("tiny", from: source, sha256: "abc")
     XCTAssertEqual(published.status, .installed)
     let verified = try await store.verify(id: "tiny")
-    XCTAssertEqual(verified.sha256, "abc")
+    // SHA256 is now always computed from the actual payload, not caller-provided
+    XCTAssertFalse(verified.sha256?.isEmpty ?? true, "sha256 must be computed and stored")
     XCTAssertTrue(
       FileManager.default.fileExists(atPath: root.appending(path: "models/tiny/model.json").path))
 

@@ -22,6 +22,8 @@ public actor MeetingStore {
 
     do {
       try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: false)
+      try FileManager.default.setAttributes(
+        [.posixPermissions: 0o700], ofItemAtPath: directory.path)
       try writeInitialFiles(for: manifest, in: directory)
     } catch {
       try? FileManager.default.removeItem(at: directory)
@@ -552,6 +554,8 @@ public actor MeetingStore {
     try requireSafePath(directory)
     do {
       try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+      try FileManager.default.setAttributes(
+        [.posixPermissions: 0o700], ofItemAtPath: directory.path)
       try requireSafePath(directory)
     } catch {
       throw error is StoreError ? error : StoreError.operationFailed
