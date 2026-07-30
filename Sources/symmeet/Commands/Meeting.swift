@@ -30,7 +30,7 @@ extension SymMeet {
           }
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
@@ -55,7 +55,7 @@ extension SymMeet {
           Output.writeLine("Retention: \(meeting.retention.policy.rawValue)")
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
@@ -75,7 +75,7 @@ extension SymMeet {
         try await MeetingStore().trash(meetingID: meetingID)
         try writeMutationResult(status: "trashed")
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
 
@@ -109,7 +109,7 @@ extension SymMeet {
           Output.writeLine("Restored \(meetingID.lowercased()).")
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }

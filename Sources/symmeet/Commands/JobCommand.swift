@@ -51,7 +51,7 @@ extension SymMeet {
           }
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
@@ -91,7 +91,7 @@ extension SymMeet {
           }
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
@@ -148,7 +148,7 @@ extension SymMeet {
           Output.writeLine("Job cancelled.")
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
@@ -173,12 +173,14 @@ extension SymMeet {
         guard [.failed, .cancelled, .interrupted].contains(job.status) else {
           throw CLIError(
             exitCode: CLIExit.usage.rawValue,
+            code: "job_not_found",
             message: "Job is not in a retryable state (current: \(job.status.rawValue)).")
         }
 
         guard let engineProvenance = job.engine else {
           throw CLIError(
             exitCode: CLIExit.runtimeFailure.rawValue,
+            code: "job_cannot_cancel",
             message: "Job has no engine provenance; cannot retry.")
         }
 
@@ -190,6 +192,7 @@ extension SymMeet {
           let id = engineProvenance.modelID
           throw CLIError(
             exitCode: CLIExit.runtimeFailure.rawValue,
+            code: "job_not_found",
             message: "Model '\(id)' is not installed. Run: symmeet model install \(id)")
         }
 
@@ -235,7 +238,7 @@ extension SymMeet {
           Output.writeLine("Status: \(outcome.status.rawValue)")
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
@@ -268,6 +271,7 @@ private func resolveJob(coordinator: JobCoordinator, identifier: String) async t
 
   throw CLIError(
     exitCode: CLIExit.usage.rawValue,
+    code: "job_operation_failed",
     message: "No job found for identifier: \(identifier)")
 }
 

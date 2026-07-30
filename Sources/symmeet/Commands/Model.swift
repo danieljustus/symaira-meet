@@ -27,7 +27,7 @@ extension SymMeet {
           }
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
@@ -53,7 +53,7 @@ extension SymMeet {
           Output.writeLine("Installed \(record.descriptor.id).")
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }
@@ -76,7 +76,7 @@ extension SymMeet {
           Output.writeLine(removed ? "Removed \(modelID)." : "Model \(modelID) was not installed.")
         }
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
     }
   }

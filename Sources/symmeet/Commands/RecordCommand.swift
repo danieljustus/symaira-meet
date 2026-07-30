@@ -39,7 +39,7 @@ extension SymMeet {
       do {
         consentRecord = try await auth.requestAuthorization(sessionID: sessionID, scope: scope)
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
 
       // Prepare target directories
@@ -86,7 +86,7 @@ extension SymMeet {
         try await auth.startRecording(sessionID: sessionID, authorization: consentRecord)
         try await session.start(configuration: captureConfig)
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
 
       if !json {
@@ -105,7 +105,7 @@ extension SymMeet {
         result = try await session.stop()
         try await auth.stopRecording(sessionID: sessionID)
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
 
       // Create tracks in the manifest
@@ -146,7 +146,7 @@ extension SymMeet {
       do {
         try await store.create(manifest)
       } catch {
-        throw CLIError.from(error)
+        throw CLIError.from(error, isJSON: json)
       }
 
       // JSON or human readable stdout
