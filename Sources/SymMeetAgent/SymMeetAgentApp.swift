@@ -65,7 +65,7 @@ struct SymMeetAgentApp: App {
       MainWindowView(model: model, updateChecker: updateChecker)
         .onAppear {
           appDelegate.model = model
-          Task { await updateChecker.checkForUpdate() }
+          Task { await updateChecker.checkOnLaunchIfEnabled() }
         }
     }
     .windowResizability(.contentSize)
@@ -90,6 +90,10 @@ struct SymMeetAgentApp: App {
             .symairaText(.caption, respectsForeground: false)
         }
       }
+    }
+
+    Settings {
+      AgentSettingsView(updateChecker: updateChecker)
     }
   }
 

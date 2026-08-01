@@ -113,6 +113,12 @@ struct RecordingMenu: View {
           .symairaText(.caption, respectsForeground: false)
           .foregroundColor(.secondary)
         Spacer()
+        SettingsLink {
+          Text("Settings")
+        }
+        .buttonStyle(.plain)
+        .symairaText(.caption, respectsForeground: false)
+        .foregroundColor(.secondary)
         Button("Quit Agent") {
           NSApplication.shared.terminate(nil)
         }
@@ -141,6 +147,13 @@ struct RecordingMenu: View {
             .foregroundColor(.secondary)
         }
         Spacer()
+        if !release.assets.isEmpty {
+          Button("Install") {
+            Task { await updateChecker.install(release) }
+          }
+          .buttonStyle(.borderedProminent)
+          .controlSize(.small)
+        }
         Button("Skip") {
           updateChecker.skip(release)
         }
@@ -156,6 +169,26 @@ struct RecordingMenu: View {
       .padding(8)
       .background(Color.orange.opacity(0.1))
       .cornerRadius(6)
+
+    case .installing(let progress):
+      HStack(spacing: 8) {
+        ProgressView(value: progress, total: 1)
+          .frame(width: 80)
+        Text("Installing update…")
+          .symairaText(.caption, respectsForeground: false)
+          .foregroundColor(.secondary)
+      }
+      .padding(8)
+
+    case .readyToRelaunch:
+      HStack(spacing: 8) {
+        Image(systemName: "checkmark.circle.fill")
+          .foregroundColor(.green)
+        Text("Update installed — relaunch to finish")
+          .symairaText(.caption, respectsForeground: false)
+          .foregroundColor(.secondary)
+      }
+      .padding(8)
 
     case .error:
       HStack(spacing: 4) {
@@ -174,7 +207,7 @@ struct RecordingMenu: View {
       }
       .padding(8)
 
-    default:
+    case .upToDate, .unknown, .skipped:
       EmptyView()
     }
   }

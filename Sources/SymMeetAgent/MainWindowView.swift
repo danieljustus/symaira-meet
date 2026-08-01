@@ -96,20 +96,50 @@ struct MainWindowView: View {
 
   @ViewBuilder
   private var updateBanner: some View {
-    if case .available(let release) = updateChecker.status {
+    switch updateChecker.status {
+    case .available(let release):
       SymairaNotice(
         title: "Update available: \(release.tagName)",
         message: "A newer version of Symaira Meet has been released.",
         tone: .warning
       )
       HStack(spacing: SymairaSpacing.medium) {
-        Link("View release", destination: URL(string: release.htmlURL)!)
-          .symairaText(.caption)
+        if !release.assets.isEmpty {
+          Button("Install") {
+            Task { await updateChecker.install(release) }
+          }
+          .buttonStyle(SymairaPrimaryButtonStyle())
+        }
+        if let url = URL(string: release.htmlURL) {
+          Link("View release", destination: url)
+            .symairaText(.caption)
+        }
         Button("Skip") { updateChecker.skip(release) }
           .buttonStyle(.plain)
           .symairaText(.caption, respectsForeground: false)
           .foregroundStyle(SymairaTheme.textMuted)
       }
+    case .installing(let progress):
+      HStack(spacing: SymairaSpacing.small) {
+        ProgressView(value: progress, total: 1)
+          .frame(width: 140)
+        Text("Installing update…")
+          .symairaText(.caption)
+      }
+    case .readyToRelaunch:
+      SymairaNotice(
+        title: "Update installed",
+        message: "Quit and relaunch Symaira Meet to start the new version.",
+        tone: .positive
+      )
+    case .error(let message):
+      SymairaNotice(
+        title: "Update check failed",
+        message: message,
+        tone: .critical
+      )
+    default:
+      EmptyView()
     }
   }
 
@@ -383,6 +413,12 @@ struct MainWindowView: View {
         .symairaText(.caption, respectsForeground: false)
         .foregroundStyle(SymairaTheme.textMuted)
       Spacer()
+      SettingsLink {
+        Text("Settings")
+      }
+      .buttonStyle(.plain)
+      .symairaText(.caption, respectsForeground: false)
+      .foregroundStyle(SymairaTheme.textSecondary)
       Button("Open data folder") {
         let dir = SymMeetPaths().dataDirectory
         NSWorkspace.shared.open(dir)
