@@ -12,17 +12,19 @@ struct ConsentSheet: View {
   var body: some View {
     VStack(spacing: 20) {
       Text("Start Recording")
-        .font(.headline)
-        .bold()
+        .symairaText(.heading)
 
       Text("Please specify the purpose of the meeting for interactive authorization record. Processing remains local.")
-        .font(.body)
+        .symairaText(.body, respectsForeground: false)
         .multilineTextAlignment(.center)
         .foregroundColor(.secondary)
 
-      TextField("Purpose (e.g. Daily Standup)", text: $purposeInput)
-        .textFieldStyle(.roundedBorder)
-        .padding(.horizontal)
+      SymairaFormSection("Meeting") {
+        SymairaFormRow("Purpose") {
+          TextField("e.g. Daily Standup", text: $purposeInput)
+            .textFieldStyle(.symaira)
+        }
+      }
 
       HStack(spacing: 16) {
         Button("Cancel") {

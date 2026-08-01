@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 import SymMeetCore
 import SymairaTheme
 import SymairaUpdateCheck
@@ -54,15 +54,15 @@ struct MainWindowView: View {
   private var header: some View {
     HStack(spacing: SymairaSpacing.medium) {
       Image(systemName: "waveform.circle.fill")
-        .font(.title2)
+        .symairaText(.heading, respectsForeground: false)
         .foregroundStyle(SymairaTheme.goldPrimary)
 
       VStack(alignment: .leading, spacing: 2) {
         Text("Symaira Meet")
-          .font(.headline)
+          .symairaText(.subheading, respectsForeground: false)
           .foregroundStyle(SymairaTheme.textPrimary)
         Text("Local-first meeting artifacts")
-          .font(.caption)
+          .symairaText(.caption, respectsForeground: false)
           .foregroundStyle(SymairaTheme.textMuted)
       }
 
@@ -104,10 +104,10 @@ struct MainWindowView: View {
       )
       HStack(spacing: SymairaSpacing.medium) {
         Link("View release", destination: URL(string: release.htmlURL)!)
-          .font(.caption)
+          .symairaText(.caption)
         Button("Skip") { updateChecker.skip(release) }
           .buttonStyle(.plain)
-          .font(.caption)
+          .symairaText(.caption, respectsForeground: false)
           .foregroundStyle(SymairaTheme.textMuted)
       }
     }
@@ -153,15 +153,15 @@ struct MainWindowView: View {
   private var idleSection: some View {
     VStack(alignment: .leading, spacing: SymairaSpacing.medium) {
       Text("New recording")
-        .font(.subheadline.weight(.semibold))
+        .symairaText(.bodyEmphasized, respectsForeground: false)
         .foregroundStyle(SymairaTheme.textPrimary)
 
       TextField("Purpose of the meeting…", text: $purposeInput)
-        .textFieldStyle(.roundedBorder)
+        .textFieldStyle(.symaira)
 
       HStack {
         Text("Audio is captured and processed locally on this device.")
-          .font(.caption)
+          .symairaText(.caption, respectsForeground: false)
           .foregroundStyle(SymairaTheme.textMuted)
         Spacer()
         Button {
@@ -180,13 +180,13 @@ struct MainWindowView: View {
   private var consentSection: some View {
     VStack(alignment: .leading, spacing: SymairaSpacing.medium) {
       Text("Confirm consent")
-        .font(.subheadline.weight(.semibold))
+        .symairaText(.bodyEmphasized, respectsForeground: false)
         .foregroundStyle(SymairaTheme.textPrimary)
       Text(
         "By proceeding, you attest that all participants have been informed "
           + "and you authorize this recording. It will be processed locally on your device."
       )
-      .font(.callout)
+      .symairaText(.secondary, respectsForeground: false)
       .foregroundStyle(SymairaTheme.textSecondary)
 
       HStack {
@@ -205,7 +205,7 @@ struct MainWindowView: View {
     HStack(spacing: SymairaSpacing.small) {
       ProgressView().scaleEffect(0.8)
       Text(label)
-        .font(.callout)
+        .symairaText(.secondary, respectsForeground: false)
         .foregroundStyle(SymairaTheme.textSecondary)
     }
   }
@@ -217,11 +217,11 @@ struct MainWindowView: View {
           .fill(paused ? SymairaTheme.warning : SymairaTheme.critical)
           .frame(width: 10, height: 10)
         Text(paused ? "Paused" : "Recording live")
-          .font(.subheadline.weight(.semibold))
+          .symairaText(.bodyEmphasized, respectsForeground: false)
           .foregroundStyle(SymairaTheme.textPrimary)
         Spacer()
         Text(formatTime(elapsed))
-          .font(.system(.title3, design: .monospaced))
+          .symairaText(.mono, respectsForeground: false)
           .foregroundStyle(SymairaTheme.goldPrimary)
       }
 
@@ -275,7 +275,7 @@ struct MainWindowView: View {
         Image(systemName: "checkmark.circle.fill")
           .foregroundStyle(SymairaTheme.positive)
         Text("Recording complete — meeting artifact stored.")
-          .font(.subheadline.weight(.semibold))
+          .symairaText(.bodyEmphasized, respectsForeground: false)
           .foregroundStyle(SymairaTheme.textPrimary)
       }
       HStack {
@@ -296,7 +296,7 @@ struct MainWindowView: View {
     VStack(alignment: .leading, spacing: SymairaSpacing.small) {
       HStack {
         Text("Meetings")
-          .font(.subheadline.weight(.semibold))
+          .symairaText(.bodyEmphasized, respectsForeground: false)
           .foregroundStyle(SymairaTheme.textPrimary)
         if storeDiagnostics > 0 {
           SymairaBadge("\(storeDiagnostics) skipped", tone: .warning, systemImage: "exclamationmark.triangle")
@@ -338,10 +338,10 @@ struct MainWindowView: View {
 
       VStack(alignment: .leading, spacing: 2) {
         Text(meeting.createdAt.formatted(date: .abbreviated, time: .shortened))
-          .font(.callout.weight(.medium))
+          .symairaText(.callout, respectsForeground: false)
           .foregroundStyle(SymairaTheme.textPrimary)
         Text(id)
-          .font(.caption.monospaced())
+          .symairaText(.monoSmall, respectsForeground: false)
           .foregroundStyle(SymairaTheme.textMuted)
           .lineLimit(1)
           .truncationMode(.middle)
@@ -380,7 +380,7 @@ struct MainWindowView: View {
   private var footer: some View {
     HStack {
       Text("v\(BuildInfo.version)")
-        .font(.caption)
+        .symairaText(.caption, respectsForeground: false)
         .foregroundStyle(SymairaTheme.textMuted)
       Spacer()
       Button("Open data folder") {
@@ -388,7 +388,7 @@ struct MainWindowView: View {
         NSWorkspace.shared.open(dir)
       }
       .buttonStyle(.plain)
-      .font(.caption)
+      .symairaText(.caption, respectsForeground: false)
       .foregroundStyle(SymairaTheme.textSecondary)
     }
     .padding(.horizontal, SymairaSpacing.large)

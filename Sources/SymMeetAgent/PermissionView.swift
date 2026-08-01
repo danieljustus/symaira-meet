@@ -7,17 +7,16 @@ struct PermissionView: View {
   var body: some View {
     VStack(spacing: 20) {
       Text("Permissions Required")
-        .font(.title2)
-        .bold()
+        .symairaText(.heading, respectsForeground: false)
         .foregroundColor(.primary)
 
       Text("Symaira Meet needs microphone and screen recording permissions to capture synchronized system and microphone audio.")
-        .font(.body)
+        .symairaText(.body, respectsForeground: false)
         .multilineTextAlignment(.center)
         .foregroundColor(.secondary)
         .padding(.horizontal)
 
-      VStack(spacing: 12) {
+      SymairaFormSection("Permissions") {
         permissionRow(
           name: "Microphone",
           authorized: model.microphoneAuthorized,
@@ -27,6 +26,8 @@ struct PermissionView: View {
             }
           }
         )
+
+        SymairaFormDivider()
 
         permissionRow(
           name: "Screen Recording",
@@ -38,9 +39,6 @@ struct PermissionView: View {
           }
         )
       }
-      .padding()
-      .background(Color.black.opacity(0.15))
-      .cornerRadius(12)
 
       if !model.microphoneAuthorized || !model.screenRecordingAuthorized {
         Button(action: {
@@ -49,7 +47,7 @@ struct PermissionView: View {
           }
         }) {
           Text("Open System Settings")
-            .font(.callout)
+            .symairaText(.callout, respectsForeground: false)
             .underline()
             .foregroundColor(.accentColor)
         }
@@ -61,26 +59,12 @@ struct PermissionView: View {
   }
 
   private func permissionRow(name: String, authorized: Bool, action: @escaping () -> Void) -> some View {
-    HStack {
-      Text(name)
-        .font(.headline)
-        .foregroundColor(.primary)
-
-      Spacer()
-
+    SymairaFormRow(name) {
       if authorized {
-        Image(systemName: "checkmark.circle.fill")
-          .foregroundColor(.green)
+        SymairaStatusLabel("Granted", tone: .positive)
       } else {
-        Button(action: action) {
-          Text("Grant")
-            .foregroundColor(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color.blue)
-            .cornerRadius(8)
-        }
-        .buttonStyle(.plain)
+        Button("Grant", action: action)
+          .symairaButtonStyle(.primary)
       }
     }
   }
