@@ -201,6 +201,25 @@ final class MeetingStoreTests: XCTestCase {
     XCTAssertEqual(try Data(contentsOf: rawURL), expectedData)
   }
 
+  func testBoundedRawSegmentsReturnsFirstNAndTrueTotalCount() async throws {
+    let store = MeetingStore(dataRoot: root)
+    let manifest = makeManifest()
+    try await store.create(manifest)
+
+    let meetingID = manifest.meetingID.uuidString
+    var expected: [Segment] = []
+    for index in 0..<5 {
+      let segment = try makeSegment(startMS: index * 1_000)
+      try await store.appendRawSegment(segment, meetingID: meetingID)
+      expected.append(segment)
+    }
+
+    let result = try await store.rawSegments(meetingID: meetingID, limit: 3)
+
+    XCTAssertEqual(result.segments, Array(expected.prefix(3)))
+    XCTAssertEqual(result.totalCount, expected.count)
+  }
+
   func testMalformedTrailingRawSegmentLineRemainsMalformedAfterAppend() async throws {
     let store = MeetingStore(dataRoot: root)
     let manifest = makeManifest()

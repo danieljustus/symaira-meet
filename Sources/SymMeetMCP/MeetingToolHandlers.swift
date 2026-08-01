@@ -58,9 +58,8 @@ struct MeetingGetHandler: MCPToolHandler {
     )
 
     if includeSegments {
-      let segments = try await store.rawSegments(meetingID: meetingID)
-      let bounded = Array(segments.prefix(segmentLimit))
-      output.segments = bounded.map { seg in
+      let bounded = try await store.rawSegments(meetingID: meetingID, limit: segmentLimit)
+      output.segments = bounded.segments.map { seg in
         SegmentOutput(
           segmentID: seg.segmentID.uuidString.lowercased(),
           speakerID: seg.speakerID,
@@ -70,7 +69,7 @@ struct MeetingGetHandler: MCPToolHandler {
           revision: seg.revision.rawValue
         )
       }
-      output.segmentCount = segments.count
+      output.segmentCount = bounded.totalCount
       output.segmentLimit = segmentLimit
     }
 
