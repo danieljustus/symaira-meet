@@ -1,4 +1,5 @@
 import ArgumentParser
+import Darwin
 import Foundation
 import SymMeetCore
 
@@ -14,13 +15,34 @@ extension SymMeet {
       if json {
         try Output.writeJSON(report)
       } else {
-        let artifactStoreStatus = report.checks["artifact_store"]?.status ?? "unknown"
         Output.writeLine("OS: \(report.os)")
         Output.writeLine("Architecture: \(report.architecture)")
-        Output.writeLine("Artifact store: \(artifactStoreStatus)")
+        for (label, key) in [
+          ("Artifact store", "artifact_store"),
+          ("Capture", "capture"),
+          ("Models", "models"),
+        ] {
+          guard let check = report.checks[key] else { continue }
+          Output.writeLine("\(label): \(check.status.rawValue)")
+          if let remediation = check.remediation {
+            Output.writeLine("  Remediation: \(remediation)")
+          }
+        }
+      }
+
+      if !report.allOK {
+        // The report has already been emitted. Exiting directly keeps --json
+        // machine-readable instead of appending a second error document.
+        Darwin.exit(CLIExit.runtimeFailure.rawValue)
       }
     }
   }
+}
+
+private enum CheckStatus: String, Codable {
+  case ok
+  case warn
+  case fail
 }
 
 private struct DoctorReport: Encodable {
@@ -30,6 +52,10 @@ private struct DoctorReport: Encodable {
   let disk: DiskReport
   let checks: [String: DoctorCheck]
 
+  var allOK: Bool {
+    !checks.values.contains { $0.status == .fail }
+  }
+
   init(paths: SymMeetPaths) {
     os = ProcessInfo.processInfo.operatingSystemVersionString
     architecture = Self.machineArchitecture()
@@ -38,11 +64,28 @@ private struct DoctorReport: Encodable {
 
     let dataExists = FileManager.default.fileExists(atPath: paths.dataDirectory.path)
     let writable = Self.isWritable(paths.dataDirectory)
+    let artifactStore: DoctorCheck
+    if dataExists {
+      artifactStore = DoctorCheck(
+        status: writable ? .ok : .fail,
+        remediation: writable
+          ? nil
+          : "Set XDG_DATA_HOME to a writable location, then run doctor again.")
+    } else {
+      artifactStore = DoctorCheck(
+        status: .warn,
+        remediation:
+          "Create the data directory before recording, or set XDG_DATA_HOME to a writable location.")
+    }
+
     checks = [
-      "artifact_store": DoctorCheck(
-        status: dataExists ? (writable ? "healthy" : "unwritable") : "not_initialized"),
-      "capture": DoctorCheck(status: "not_implemented"),
-      "models": DoctorCheck(status: "not_implemented"),
+      "artifact_store": artifactStore,
+      "capture": DoctorCheck(
+        status: .warn,
+        remediation: "Grant Screen Recording and Microphone access to symmeet in System Settings."),
+      "models": DoctorCheck(
+        status: .warn,
+        remediation: "Install a transcription model with `symmeet model install <id>` before processing."),
     ]
   }
 
@@ -113,5 +156,6 @@ private struct DiskReport: Encodable {
 }
 
 private struct DoctorCheck: Encodable {
-  let status: String
+  let status: CheckStatus
+  let remediation: String?
 }
