@@ -168,6 +168,84 @@ final class MeetingStoreTests: XCTestCase {
     XCTAssertEqual(copied.meetingID, manifest.meetingID)
   }
 
+  func testRepeatedRawSegmentAppendsPreserveFileIdentityAndRemainReadable() async throws {
+    let store = MeetingStore(dataRoot: root)
+    let manifest = makeManifest()
+    try await store.create(manifest)
+
+    let meetingID = manifest.meetingID.uuidString
+    let rawURL = root.appending(
+      path: "meetings/\(manifest.meetingID.uuidString.lowercased())/segments.raw.jsonl")
+    var expected: [Segment] = []
+
+    for index in 0..<32 {
+      let segment = try makeSegment(startMS: index * 1_000)
+      try await store.appendRawSegment(segment, meetingID: meetingID)
+      expected.append(segment)
+    }
+
+    let fileNumberAfterFirstAppend = try fileNumber(for: rawURL)
+    let additionalSegment = try makeSegment(startMS: 32_000)
+    try await store.appendRawSegment(additionalSegment, meetingID: meetingID)
+    expected.append(additionalSegment)
+
+    XCTAssertEqual(try fileNumber(for: rawURL), fileNumberAfterFirstAppend)
+    let actual = try await store.rawSegments(meetingID: meetingID)
+    XCTAssertEqual(actual, expected)
+
+    var expectedData = Data()
+    for segment in expected {
+      expectedData.append(try ContractCodec.encoder().encode(segment))
+      expectedData.append(0x0A)
+    }
+    XCTAssertEqual(try Data(contentsOf: rawURL), expectedData)
+  }
+
+  func testMalformedTrailingRawSegmentLineRemainsMalformedAfterAppend() async throws {
+    let store = MeetingStore(dataRoot: root)
+    let manifest = makeManifest()
+    try await store.create(manifest)
+
+    let meetingID = manifest.meetingID.uuidString
+    let rawURL = root.appending(
+      path: "meetings/\(manifest.meetingID.uuidString.lowercased())/segments.raw.jsonl")
+    let validSegment = try makeSegment(startMS: 0)
+    try await store.appendRawSegment(validSegment, meetingID: meetingID)
+
+    let validLine = try ContractCodec.encoder().encode(validSegment) + Data([0x0A])
+    var dataWithPartialTrailingLine = validLine
+    dataWithPartialTrailingLine.append(Data("{\"schema_version\":1".utf8))
+    try dataWithPartialTrailingLine.write(to: rawURL)
+
+    let appendedSegment = try makeSegment(startMS: 1_000)
+    try await store.appendRawSegment(appendedSegment, meetingID: meetingID)
+
+    let storedData = try Data(contentsOf: rawURL)
+    XCTAssertTrue(storedData.starts(with: validLine))
+    await assertThrowsErrorAsync(try await store.rawSegments(meetingID: meetingID)) { error in
+      XCTAssertEqual(error as? StoreError, .malformedArtifact)
+    }
+  }
+
+  private func makeSegment(startMS: Int) throws -> Segment {
+    try Segment(
+      segmentID: UUID(),
+      trackID: UUID(),
+      speakerID: "speaker_1",
+      startMS: startMS,
+      endMS: startMS + 500,
+      engineText: "segment \(startMS)"
+    )
+  }
+
+  private func fileNumber(for url: URL) throws -> UInt64 {
+    let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+    guard let value = attributes[.systemFileNumber] as? NSNumber else {
+      throw NSError(domain: "MeetingStoreTests", code: 1)
+    }
+    return value.uint64Value
+  }
+
   private func makeManifest() -> MeetingManifest {
     MeetingManifest(
       meetingID: UUID(),
