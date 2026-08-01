@@ -185,6 +185,51 @@ final class CLITests: XCTestCase {
   private func jsonObject(_ text: String) throws -> Any {
     try JSONSerialization.jsonObject(with: Data(text.utf8))
   }
+
+  func testDoctorHumanOutputIncludesActionableRemediation() throws {
+    let result = try runCLI(["doctor"])
+
+    XCTAssertEqual(result.status, 0, result.stderr)
+    XCTAssertEqual(result.stderr, "")
+    XCTAssertTrue(result.stdout.contains("Artifact store: warn"), result.stdout)
+    XCTAssertTrue(result.stdout.contains("Capture: warn"), result.stdout)
+    XCTAssertTrue(result.stdout.contains("Models: warn"), result.stdout)
+    XCTAssertTrue(result.stdout.contains("Remediation:"), result.stdout)
+  }
+
+  func testDoctorJSONUsesTypedStatusesAndRemediation() throws {
+    let result = try runCLI(["doctor", "--json"])
+
+    XCTAssertEqual(result.status, 0, result.stderr)
+    XCTAssertEqual(result.stderr, "")
+    let doctor = try XCTUnwrap(jsonObject(result.stdout) as? [String: Any])
+    let checks = try XCTUnwrap(doctor["checks"] as? [String: Any])
+
+    for name in ["artifact_store", "capture", "models"] {
+      let check = try XCTUnwrap(checks[name] as? [String: Any])
+      XCTAssertEqual(check["status"] as? String, "warn")
+      XCTAssertNotNil(check["remediation"] as? String)
+    }
+  }
+
+  func testDoctorJSONExitsWithFailureWhenArtifactStoreIsUnwritable() throws {
+    let blockedDataHome = root.appending(path: "blocked-data-home")
+    let dataDirectory = blockedDataHome.appending(path: "symmeet")
+    try FileManager.default.createDirectory(at: dataDirectory, withIntermediateDirectories: true)
+    try FileManager.default.setAttributes(
+      [.posixPermissions: 0o444], ofItemAtPath: dataDirectory.path)
+    environment["XDG_DATA_HOME"] = blockedDataHome.path
+
+    let result = try runCLI(["doctor", "--json"])
+
+    XCTAssertEqual(result.status, 1, result.stderr)
+    XCTAssertEqual(result.stderr, "")
+    let doctor = try XCTUnwrap(jsonObject(result.stdout) as? [String: Any])
+    let checks = try XCTUnwrap(doctor["checks"] as? [String: Any])
+    let artifactStore = try XCTUnwrap(checks["artifact_store"] as? [String: Any])
+    XCTAssertEqual(artifactStore["status"] as? String, "fail")
+    XCTAssertNotNil(artifactStore["remediation"] as? String)
+  }
 }
 
 private struct CLIResult {
