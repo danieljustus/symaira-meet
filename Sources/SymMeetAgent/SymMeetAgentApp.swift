@@ -1,5 +1,6 @@
 import SwiftUI
 import SymMeetCore
+import SymairaTheme
 import SymairaUpdateCheck
 
 class AppDelegate: NSObject, NSApplicationDelegate {
@@ -81,12 +82,12 @@ struct SymMeetAgentApp: App {
           .foregroundColor(isRecording ? .red : .primary)
         if case .recording(let elapsed) = model.state {
           Text(formatTime(elapsed))
-            .font(.system(.body, design: .monospaced))
+            .symairaText(.mono)
         }
         if case .available = updateChecker.status {
           Image(systemName: "arrow.up.circle.fill")
             .foregroundColor(.orange)
-            .font(.caption)
+            .symairaText(.caption, respectsForeground: false)
         }
       }
     }

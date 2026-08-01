@@ -22,12 +22,12 @@ struct RecordingMenu: View {
       case .consentConfirmation:
         VStack(spacing: 12) {
           Text("Confirm Consent")
-            .font(.headline)
+            .symairaText(.subheading)
           Text(
             "By proceeding, you authorize this recording. "
               + "It will process audio locally on your device."
           )
-          .font(.caption)
+          .symairaText(.secondary, respectsForeground: false)
           .multilineTextAlignment(.center)
           .foregroundColor(.secondary)
 
@@ -50,7 +50,7 @@ struct RecordingMenu: View {
           ProgressView()
             .scaleEffect(0.8)
           Text("Starting capture session...")
-            .font(.callout)
+            .symairaText(.callout)
         }
 
       case .recording(let elapsed):
@@ -64,16 +64,16 @@ struct RecordingMenu: View {
           ProgressView()
             .scaleEffect(0.8)
           Text("Finalizing track assets...")
-            .font(.callout)
+            .symairaText(.callout)
         }
 
       case .failed(let message):
         VStack(spacing: 12) {
           Text("Recording Failed")
-            .font(.headline)
+            .symairaText(.subheading, respectsForeground: false)
             .foregroundColor(.red)
           Text(message)
-            .font(.caption)
+            .symairaText(.caption, respectsForeground: false)
             .foregroundColor(.secondary)
 
           Button("Dismiss") {
@@ -84,10 +84,10 @@ struct RecordingMenu: View {
       case .completed(let meetingID):
         VStack(spacing: 12) {
           Text("Recording Complete")
-            .font(.headline)
+            .symairaText(.subheading, respectsForeground: false)
             .foregroundColor(.green)
           Text("Meeting artifact was successfully stored.")
-            .font(.caption)
+            .symairaText(.caption, respectsForeground: false)
             .foregroundColor(.secondary)
 
           HStack(spacing: 8) {
@@ -110,7 +110,7 @@ struct RecordingMenu: View {
       // Version info
       HStack {
         Text("v\(BuildInfo.version)")
-          .font(.caption)
+          .symairaText(.caption, respectsForeground: false)
           .foregroundColor(.secondary)
         Spacer()
         Button("Quit Agent") {
@@ -135,10 +135,9 @@ struct RecordingMenu: View {
           .foregroundColor(.orange)
         VStack(alignment: .leading, spacing: 2) {
           Text("Update available")
-            .font(.caption)
-            .fontWeight(.semibold)
+            .symairaText(.caption)
           Text(release.tagName)
-            .font(.caption2)
+            .symairaText(.caption, respectsForeground: false)
             .foregroundColor(.secondary)
         }
         Spacer()
@@ -146,7 +145,7 @@ struct RecordingMenu: View {
           updateChecker.skip(release)
         }
         .buttonStyle(.plain)
-        .font(.caption)
+        .symairaText(.caption, respectsForeground: false)
         .foregroundColor(.secondary)
         Link(destination: URL(string: release.htmlURL)!) {
           Image(systemName: "arrow.up.forward.app")
@@ -162,16 +161,16 @@ struct RecordingMenu: View {
       HStack(spacing: 4) {
         Image(systemName: "exclamationmark.triangle")
           .foregroundColor(.secondary)
-          .font(.caption)
+          .symairaText(.caption, respectsForeground: false)
         Text("Update check failed")
-          .font(.caption)
+          .symairaText(.caption, respectsForeground: false)
           .foregroundColor(.secondary)
         Spacer()
         Button("Retry") {
           Task { await updateChecker.checkForUpdate(force: true) }
         }
         .buttonStyle(.plain)
-        .font(.caption)
+        .symairaText(.caption, respectsForeground: false)
       }
       .padding(8)
 
@@ -185,11 +184,11 @@ struct RecordingMenu: View {
   private var idleSection: some View {
     VStack(spacing: 12) {
       Text("Symaira Meet")
-        .font(.headline)
+        .symairaText(.subheading, respectsForeground: false)
         .foregroundColor(.primary)
 
       TextField("Purpose of recording...", text: $purposeInput)
-        .textFieldStyle(.roundedBorder)
+        .textFieldStyle(.symaira)
         .padding(.horizontal, 8)
 
       Button(action: {
@@ -198,7 +197,7 @@ struct RecordingMenu: View {
         Task { await model.initiateRecording(purpose: purpose) }
       }) {
         Text("Record Meeting")
-          .bold()
+          .symairaText(.bodyEmphasized, respectsForeground: false)
           .frame(maxWidth: .infinity)
           .padding(.vertical, 8)
           .background(purposeInput.isEmpty ? Color.gray : Color.red)
@@ -220,10 +219,10 @@ struct RecordingMenu: View {
           .fill(Color.red)
           .frame(width: 10, height: 10)
         Text("Recording Live")
-          .font(.headline)
+          .symairaText(.subheading)
         Spacer()
         Text(formatTime(elapsed))
-          .font(.system(.body, design: .monospaced))
+          .symairaText(.mono)
       }
 
       HStack(spacing: 12) {
@@ -265,10 +264,10 @@ struct RecordingMenu: View {
           .fill(Color.gray)
           .frame(width: 10, height: 10)
         Text("Paused")
-          .font(.headline)
+          .symairaText(.subheading)
         Spacer()
         Text(formatTime(elapsed))
-          .font(.system(.body, design: .monospaced))
+          .symairaText(.mono)
       }
 
       HStack(spacing: 12) {
