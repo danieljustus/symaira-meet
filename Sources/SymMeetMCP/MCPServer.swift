@@ -12,17 +12,21 @@ public struct MCPServer: Sendable {
   /// All registered tool handlers, keyed by tool name.
   private let handlers: [String: MCPToolHandler]
 
-  public init(agentBridge: AgentBridge = LocalAgentBridge()) {
+  public init(
+    agentBridge: AgentBridge = LocalAgentBridge(),
+    dataRoot: URL = SymMeetPaths().dataDirectory
+  ) {
     self.agentBridge = agentBridge
+    let store = MeetingStore(dataRoot: dataRoot)
 
     var handlerMap: [String: MCPToolHandler] = [:]
     let allHandlers: [MCPToolHandler] = [
-      MeetingListHandler(),
-      MeetingGetHandler(),
-      MeetingTranscribeHandler(),
-      MeetingJobStatusHandler(),
-      MeetingJobCancelHandler(),
-      MeetingExportHandler(),
+      MeetingListHandler(store: store),
+      MeetingGetHandler(store: store),
+      MeetingTranscribeHandler(store: store, dataRoot: dataRoot),
+      MeetingJobStatusHandler(store: store, dataRoot: dataRoot),
+      MeetingJobCancelHandler(store: store, dataRoot: dataRoot),
+      MeetingExportHandler(store: store),
       MeetingRecordingStatusHandler(agentBridge: agentBridge),
       MeetingRecordingRequestHandler(agentBridge: agentBridge),
       MeetingRecordingStopHandler(agentBridge: agentBridge),

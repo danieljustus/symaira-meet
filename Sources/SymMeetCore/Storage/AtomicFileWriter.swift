@@ -31,6 +31,23 @@ enum AtomicFileWriter {
     }
   }
 
+  static func append(_ data: Data, to destination: URL) throws {
+    do {
+      let handle = try FileHandle(forWritingTo: destination)
+      do {
+        try handle.seekToEnd()
+        try handle.write(contentsOf: data)
+        try handle.synchronize()
+        try handle.close()
+      } catch {
+        try? handle.close()
+        throw error
+      }
+    } catch {
+      throw error is StoreError ? error : StoreError.operationFailed
+    }
+  }
+
   private static func synchronize(directory: URL) throws {
     let descriptor = open(directory.path, O_RDONLY)
     guard descriptor >= 0 else { throw StoreError.operationFailed }

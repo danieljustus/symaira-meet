@@ -128,14 +128,11 @@ public actor MeetingStore {
 
     let eventsURL = layout.eventsURL(in: directory)
     try requireSafePath(eventsURL)
-    let existing = (try? Data(contentsOf: eventsURL)) ?? Data()
-
     do {
       let eventData = try ContractCodec.encoder().encode(event)
-      var updated = existing
-      updated.append(eventData)
-      updated.append(0x0A)
-      try AtomicFileWriter.write(updated, to: eventsURL)
+      var line = eventData
+      line.append(0x0A)
+      try AtomicFileWriter.append(line, to: eventsURL)
     } catch {
       throw error is StoreError ? error : StoreError.operationFailed
     }
@@ -153,14 +150,11 @@ public actor MeetingStore {
 
     let segmentsURL = layout.rawSegmentsURL(in: directory)
     try requireSafePath(segmentsURL)
-    let existing = (try? Data(contentsOf: segmentsURL)) ?? Data()
-
     do {
       let segmentData = try ContractCodec.encoder().encode(segment)
-      var updated = existing
-      updated.append(segmentData)
-      updated.append(0x0A)
-      try AtomicFileWriter.write(updated, to: segmentsURL)
+      var line = segmentData
+      line.append(0x0A)
+      try AtomicFileWriter.append(line, to: segmentsURL)
     } catch {
       throw error is StoreError ? error : StoreError.operationFailed
     }
@@ -226,15 +220,15 @@ public actor MeetingStore {
     try requireExistingSafeDirectory(directory)
     let url = layout.turnsRawURL(in: directory)
     try requireSafePath(url)
-    let existing = (try? Data(contentsOf: url)) ?? Data()
+    guard !turns.isEmpty else { return }
+
     do {
-      var updated = existing
+      var data = Data()
       for turn in turns {
-        let data = try ContractCodec.encoder().encode(turn)
-        updated.append(data)
-        updated.append(0x0A)
+        data.append(try ContractCodec.encoder().encode(turn))
+        data.append(0x0A)
       }
-      try AtomicFileWriter.write(updated, to: url)
+      try AtomicFileWriter.append(data, to: url)
     } catch {
       throw error is StoreError ? error : StoreError.operationFailed
     }
@@ -504,6 +498,7 @@ public actor MeetingStore {
     try AtomicFileWriter.write(Data(), to: layout.eventsURL(in: directory))
     try AtomicFileWriter.write(Data(), to: layout.rawSegmentsURL(in: directory))
     try AtomicFileWriter.write(Data(), to: layout.editedSegmentsURL(in: directory))
+    try AtomicFileWriter.write(Data(), to: layout.turnsRawURL(in: directory))
     try AtomicFileWriter.write(
       Data(
         "## Summary\n\n## Decisions\n\n## Action Items\n\n## Participants\n\n## Transcript\n".utf8),

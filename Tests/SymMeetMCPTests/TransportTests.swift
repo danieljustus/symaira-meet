@@ -151,4 +151,24 @@ final class TransportTests: XCTestCase {
     XCTAssertNotNil(response.error)
     XCTAssertTrue(response.error?.message.contains("Unknown tool") ?? false)
   }
+
+  func testServerMeetingListUsesInjectedTemporaryDataRoot() async throws {
+    let root = FileManager.default.temporaryDirectory
+      .appendingPathComponent("symmeet-mcp-tests-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let server = MCPServer(dataRoot: root)
+    let request = JSONRPCRequest(
+      id: .integer(6),
+      method: "tools/call",
+      params: ["name": AnyCodable("meeting_list")]
+    )
+    let response = await server.handleRequest(request)
+
+    XCTAssertNil(response.error)
+    XCTAssertTrue(
+      FileManager.default.fileExists(atPath: root.appendingPathComponent("meetings").path),
+      "The handler must use the server's injected temporary data root"
+    )
+  }
 }
