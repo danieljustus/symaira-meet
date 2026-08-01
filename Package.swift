@@ -55,6 +55,15 @@ let package = Package(
         "SymMeetSpeakerKit",
         .product(name: "ArgumentParser", package: "swift-argument-parser"),
         .product(name: "SymairaUpdateCheck", package: "symaira-appkit"),
+      ],
+      exclude: ["Info.plist"],
+      linkerSettings: [
+        .unsafeFlags([
+          "-Xlinker", "-sectcreate",
+          "-Xlinker", "__TEXT",
+          "-Xlinker", "__info_plist",
+          "-Xlinker", "Sources/symmeet/Info.plist",
+        ]),
       ]
     ),
     .testTarget(
