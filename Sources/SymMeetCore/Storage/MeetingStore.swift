@@ -166,7 +166,18 @@ public actor MeetingStore {
   public func rawSegments(meetingID: String) throws -> [Segment] {
     let normalizedID = try normalizedMeetingID(meetingID)
     let directory = layout.meetingDirectory(normalizedID)
-    return try segmentsJSONL(at: layout.rawSegmentsURL(in: directory), in: directory)
+    return try segmentsJSONL(at: layout.rawSegmentsURL(in: directory), in: directory).segments
+  }
+
+  /// Reads at most `limit` raw segments while still counting every segment
+  /// record in the evidence file. The returned segments preserve write order.
+  public func rawSegments(meetingID: String, limit: Int) throws -> (
+    segments: [Segment], totalCount: Int
+  ) {
+    let normalizedID = try normalizedMeetingID(meetingID)
+    let directory = layout.meetingDirectory(normalizedID)
+    return try segmentsJSONL(
+      at: layout.rawSegmentsURL(in: directory), in: directory, limit: max(0, limit))
   }
 
   /// Reads back every segment recorded in `segments.edited.jsonl` -- the
@@ -177,7 +188,7 @@ public actor MeetingStore {
   public func editedSegments(meetingID: String) throws -> [Segment] {
     let normalizedID = try normalizedMeetingID(meetingID)
     let directory = layout.meetingDirectory(normalizedID)
-    return try segmentsJSONL(at: layout.editedSegmentsURL(in: directory), in: directory)
+    return try segmentsJSONL(at: layout.editedSegmentsURL(in: directory), in: directory).segments
   }
 
   /// Mirrors ``rawSegments(meetingID:)`` for a meeting currently in local
@@ -185,7 +196,7 @@ public actor MeetingStore {
   public func rawSegments(trashedMeetingID meetingID: String) throws -> [Segment] {
     let normalizedID = try normalizedMeetingID(meetingID)
     let directory = layout.trashedMeetingDirectory(normalizedID)
-    return try segmentsJSONL(at: layout.rawSegmentsURL(in: directory), in: directory)
+    return try segmentsJSONL(at: layout.rawSegmentsURL(in: directory), in: directory).segments
   }
 
   /// Mirrors ``editedSegments(meetingID:)`` for a meeting currently in local
@@ -193,18 +204,31 @@ public actor MeetingStore {
   public func editedSegments(trashedMeetingID meetingID: String) throws -> [Segment] {
     let normalizedID = try normalizedMeetingID(meetingID)
     let directory = layout.trashedMeetingDirectory(normalizedID)
-    return try segmentsJSONL(at: layout.editedSegmentsURL(in: directory), in: directory)
+    return try segmentsJSONL(at: layout.editedSegmentsURL(in: directory), in: directory).segments
   }
 
-  private func segmentsJSONL(at url: URL, in directory: URL) throws -> [Segment] {
+  private func segmentsJSONL(
+    at url: URL, in directory: URL, limit: Int? = nil
+  ) throws -> (segments: [Segment], totalCount: Int) {
     try requireExistingSafeDirectory(directory)
     try requireSafePath(url)
-    guard let data = try? Data(contentsOf: url), !data.isEmpty else { return [] }
+    guard let data = try? Data(contentsOf: url), !data.isEmpty else {
+      return (segments: [], totalCount: 0)
+    }
 
     do {
-      return try data.split(separator: 0x0A).map {
-        try ContractCodec.decoder().decode(Segment.self, from: Data($0))
+      let decoder = ContractCodec.decoder()
+      var segments: [Segment] = []
+      var totalCount = 0
+
+      for line in data.split(separator: 0x0A) {
+        totalCount += 1
+        if let limit, segments.count >= limit {
+          continue
+        }
+        segments.append(try decoder.decode(Segment.self, from: Data(line)))
       }
+      return (segments: segments, totalCount: totalCount)
     } catch {
       throw StoreError.malformedArtifact
     }
