@@ -498,6 +498,7 @@ public actor MeetingStore {
     try AtomicFileWriter.write(Data(), to: layout.eventsURL(in: directory))
     try AtomicFileWriter.write(Data(), to: layout.rawSegmentsURL(in: directory))
     try AtomicFileWriter.write(Data(), to: layout.editedSegmentsURL(in: directory))
+    try AtomicFileWriter.write(Data(), to: layout.turnsRawURL(in: directory))
     try AtomicFileWriter.write(
       Data(
         "## Summary\n\n## Decisions\n\n## Action Items\n\n## Participants\n\n## Transcript\n".utf8),
