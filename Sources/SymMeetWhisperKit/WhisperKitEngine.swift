@@ -2,6 +2,42 @@ import Foundation
 import SymMeetCore
 @preconcurrency import WhisperKit
 
+// MARK: - Upstream seam (internal, test-only injection point)
+//
+// Decouples the adapter's request mapping from the concrete WhisperKit
+// instance so tests can stub the upstream transcription call. The production
+// adapter forwards to a real WhisperKit; runtime behavior is unchanged.
+
+internal protocol WhisperKitTranscribing: Sendable {
+  func transcribe(
+    audioArray: [Float],
+    decodeOptions: DecodingOptions,
+    segmentCallback: @escaping @Sendable ([TranscriptionSegment]) -> Void
+  ) async throws -> [TranscriptionResult]
+}
+
+internal struct WhisperKitTranscriberAdapter: WhisperKitTranscribing,
+  @unchecked Sendable
+{
+  private let whisperKit: WhisperKit
+
+  init(whisperKit: WhisperKit) {
+    self.whisperKit = whisperKit
+  }
+
+  func transcribe(
+    audioArray: [Float],
+    decodeOptions: DecodingOptions,
+    segmentCallback: @escaping @Sendable ([TranscriptionSegment]) -> Void
+  ) async throws -> [TranscriptionResult] {
+    try await whisperKit.transcribe(
+      audioArray: audioArray,
+      decodeOptions: decodeOptions,
+      segmentCallback: segmentCallback
+    )
+  }
+}
+
 /// The isolated WhisperKit adapter. No WhisperKit type crosses this module's
 /// public boundary; callers only observe SymMeetCore contracts.
 public actor WhisperKitEngine: TranscriptionEngine {
@@ -19,7 +55,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
   public let capabilities = WhisperKitEngine.declaredCapabilities
 
   private let modelID: String
-  private let whisperKit: WhisperKit
+  private let transcriber: any WhisperKitTranscribing
 
   public init(modelID: String, modelStore: ModelStore = ModelStore()) async throws {
     let record: ModelRecord
@@ -43,12 +79,21 @@ public actor WhisperKitEngine: TranscriptionEngine {
       load: true,
       download: false
     )
+    let whisperKit: WhisperKit
     do {
       whisperKit = try await WhisperKit(config)
     } catch {
       throw WhisperKitEngineError.modelUnavailable
     }
+    self.transcriber = WhisperKitTranscriberAdapter(whisperKit: whisperKit)
     self.modelID = modelID
+  }
+
+  /// Test seam: builds the engine around a stubbed upstream transcriber so
+  /// request mapping and event shaping can be tested without a model.
+  internal init(modelID: String, transcriber: any WhisperKitTranscribing) {
+    self.modelID = modelID
+    self.transcriber = transcriber
   }
 
   public func transcribe(
@@ -104,7 +149,7 @@ public actor WhisperKitEngine: TranscriptionEngine {
     let trackID = request.trackID
     let modelID = self.modelID
     let durationMS = request.sourceDurationMS
-    let results = try await whisperKit.transcribe(
+    let results = try await transcriber.transcribe(
       audioArray: samples,
       decodeOptions: options,
       segmentCallback: { segments in

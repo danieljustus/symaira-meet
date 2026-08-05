@@ -66,6 +66,15 @@ public actor MicrophoneAudioSource {
   }
 }
 
+// MARK: - CaptureSession seam
+//
+// Conforms to the internal `MicrophoneCapturing` protocol so CaptureSession
+// can drive microphone capture through a protocol-typed source. The existing
+// methods already match the protocol requirements (sync methods satisfy the
+// async requirements via the concurrency thunk).
+
+extension MicrophoneAudioSource: MicrophoneCapturing {}
+
 // MARK: - Delegate (non-actor, isolated by the serial queue set above)
 
 private final class MicrophoneSampleDelegate: NSObject,
