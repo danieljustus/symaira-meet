@@ -1,13 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 
-# Export an lcov coverage report from SwiftPM's code-coverage output.
+# Export an lcov coverage report from SwiftPM's code-coverage output and
+# enforce a line-coverage floor gate (fails the run when coverage regresses).
 #
 # Usage: scripts/coverage-report.sh [codecov-dir] [output.lcov]
 #
 # Expects `swift test --enable-code-coverage` to have run already. Requires
 # full Xcode (llvm-profdata / llvm-cov via xcrun); Command Line Tools do not
 # include XCTest, so the coverage run itself cannot be produced there.
+#
+# The gate sums LF/LH records across the whole lcov file and exits 1 when the
+# resulting line coverage is below the floor. Default floor is 55%; override
+# with the COVERAGE_FLOOR environment variable (e.g. COVERAGE_FLOOR=60 make
+# coverage). The 80% target is tracked via the coverage issues; this floor
+# only prevents regressions while that gap is closed.
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -63,3 +70,38 @@ fi
 
 xcrun llvm-cov export -format=lcov -instr-profile "$PROFDATA" "${LLVM_COV_ARGS[@]}" > "$OUT"
 echo "wrote $OUT"
+
+# --- coverage floor gate ---
+COVERAGE_FLOOR="${COVERAGE_FLOOR:-55}"
+if [[ ! "$COVERAGE_FLOOR" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
+  echo "error: COVERAGE_FLOOR='$COVERAGE_FLOOR' is not a number." >&2
+  exit 1
+fi
+
+# Sum LF (lines found) and LH (lines hit) across every lcov record; % = LH/LF.
+LF_TOTAL=0
+LH_TOTAL=0
+while IFS=: read -r key value; do
+  case "$key" in
+    LF) LF_TOTAL=$((LF_TOTAL + ${value//,/})) ;;
+    LH) LH_TOTAL=$((LH_TOTAL + ${value//,/})) ;;
+  esac
+done < "$OUT"
+
+if [ "$LF_TOTAL" -eq 0 ]; then
+  echo "error: no LF records found in '$OUT'; cannot compute line coverage." >&2
+  exit 1
+fi
+
+PERCENT="$(awk -v lf="$LF_TOTAL" -v lh="$LH_TOTAL" 'BEGIN { printf "%.1f", lh * 100 / lf }')"
+echo "line coverage: ${PERCENT}% ($LH_TOTAL/$LF_TOTAL lines)"
+
+BELOW_FLOOR="$(awk -v p="$PERCENT" -v f="$COVERAGE_FLOOR" 'BEGIN { print (p < f) ? 1 : 0 }')"
+if [ "$BELOW_FLOOR" -eq 1 ]; then
+  echo "error: line coverage ${PERCENT}% is below the ${COVERAGE_FLOOR}% floor." >&2
+  echo "       Raise coverage toward the 80% target, or override the floor" >&2
+  echo "       explicitly with COVERAGE_FLOOR=<pct>." >&2
+  exit 1
+fi
+
+echo "coverage gate: ${PERCENT}% >= ${COVERAGE_FLOOR}% floor — OK"
