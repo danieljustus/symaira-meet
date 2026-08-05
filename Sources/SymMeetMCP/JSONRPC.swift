@@ -174,39 +174,34 @@ struct AnyCodable: Codable, @unchecked Sendable {
 
 // MARK: - Stdio transport helpers
 
-/// Reads newline-delimited JSON-RPC messages from stdin.
-enum JSONRPCReader {
-  /// Reads a single JSON-RPC message from stdin. Returns nil on EOF.
-  static func read() -> String? {
-    var buffer = ""
-    while let line = readLine(strippingNewline: true) {
-      buffer += line
-      if !buffer.isEmpty && !buffer.hasSuffix("\r") {
-        return buffer
-      }
-    }
-    return buffer.isEmpty ? nil : buffer
-  }
-}
-
 /// Writes a JSON-RPC message to stdout, ensuring only protocol frames are written.
+///
+/// Framing rule (MCP stdio spec): newline-delimited JSON — exactly one JSON
+/// message per line, each terminated by a single `\n`. Compact encoding never
+/// emits raw newline bytes inside a message, so text containing newlines is
+/// escaped and stays within one frame. Stdout carries protocol frames only;
+/// diagnostics go to stderr via `JSONRPCDiagnostics`.
 enum JSONRPCWriter {
-  /// Writes a JSON-RPC response to stdout.
-  static func write(_ response: JSONRPCResponse) throws {
+  /// Encodes a message into a single newline-delimited protocol frame.
+  ///
+  /// The returned data is exactly one line: compact JSON followed by `\n`,
+  /// with no embedded newlines.
+  static func frame<T: Encodable>(_ message: T) throws -> Data {
     let encoder = JSONEncoder()
     encoder.outputFormatting = []
-    let data = try encoder.encode(response)
-    FileHandle.standardOutput.write(data)
-    FileHandle.standardOutput.write(Data([0x0A]))
+    var data = try encoder.encode(message)
+    data.append(0x0A)
+    return data
   }
 
-  /// Writes a JSON-RPC notification to stdout.
+  /// Writes a JSON-RPC response to stdout as one newline-delimited frame.
+  static func write(_ response: JSONRPCResponse) throws {
+    FileHandle.standardOutput.write(try frame(response))
+  }
+
+  /// Writes a JSON-RPC notification to stdout as one newline-delimited frame.
   static func write(_ notification: JSONRPCNotification) throws {
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = []
-    let data = try encoder.encode(notification)
-    FileHandle.standardOutput.write(data)
-    FileHandle.standardOutput.write(Data([0x0A]))
+    FileHandle.standardOutput.write(try frame(notification))
   }
 }
 
