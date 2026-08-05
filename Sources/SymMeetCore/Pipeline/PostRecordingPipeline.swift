@@ -189,10 +189,10 @@ public actor PostRecordingPipeline {
           }
           try await meetingStore.writePipelineState(state, meetingID: normalizedID)
         } catch {
-          state.phases[.diarization] = PhaseState(
-            status: .failed, message: Self.localizedError(error))
+          let message = Self.localizedError(error)
+          state.phases[.diarization] = PhaseState(status: .failed, message: message)
           try await meetingStore.writePipelineState(state, meetingID: normalizedID)
-          onProgress(.phaseFailed(.diarization, Self.localizedError(error)))
+          onProgress(.phaseFailed(.diarization, message))
         }
       } else {
         state.phases[.diarization] = PhaseState(status: .skipped)
@@ -215,10 +215,10 @@ public actor PostRecordingPipeline {
         onProgress(.alignmentSegments(count))
         try await meetingStore.writePipelineState(state, meetingID: normalizedID)
       } catch {
-        state.phases[.alignment] = PhaseState(
-          status: .failed, message: Self.localizedError(error))
+        let message = Self.localizedError(error)
+        state.phases[.alignment] = PhaseState(status: .failed, message: message)
         try await meetingStore.writePipelineState(state, meetingID: normalizedID)
-        onProgress(.phaseFailed(.alignment, Self.localizedError(error)))
+        onProgress(.phaseFailed(.alignment, message))
       }
     }
 
@@ -236,10 +236,10 @@ public actor PostRecordingPipeline {
         onProgress(.phaseSucceeded(.projection))
         try await meetingStore.writePipelineState(state, meetingID: normalizedID)
       } catch {
-        state.phases[.projection] = PhaseState(
-          status: .failed, message: Self.localizedError(error))
+        let message = Self.localizedError(error)
+        state.phases[.projection] = PhaseState(status: .failed, message: message)
         try await meetingStore.writePipelineState(state, meetingID: normalizedID)
-        onProgress(.phaseFailed(.projection, Self.localizedError(error)))
+        onProgress(.phaseFailed(.projection, message))
       }
     }
 
@@ -257,15 +257,15 @@ public actor PostRecordingPipeline {
         onProgress(.phaseSucceeded(.export))
         try await meetingStore.writePipelineState(state, meetingID: normalizedID)
       } catch {
-        state.phases[.export] = PhaseState(
-          status: .failed, message: Self.localizedError(error))
+        let message = Self.localizedError(error)
+        state.phases[.export] = PhaseState(status: .failed, message: message)
         try await meetingStore.writePipelineState(state, meetingID: normalizedID)
-        onProgress(.phaseFailed(.export, Self.localizedError(error)))
+        onProgress(.phaseFailed(.export, message))
       }
     }
 
     // ready_for_review: set when transcription succeeded
-    if !state.isReadyForReview && manifest.job?.state == .completed {
+    if state.status(of: .readyForReview) != .succeeded && manifest.job?.state == .completed {
       state.phases[.readyForReview] = PhaseState(status: .succeeded)
       try await meetingStore.writePipelineState(state, meetingID: normalizedID)
     }
