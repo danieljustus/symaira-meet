@@ -18,6 +18,19 @@ require another Symaira binary, a cloud account, or telemetry.
 
 ## Install
 
+### Homebrew (recommended)
+
+```bash
+brew install danieljustus/tap/symmeet                 # CLI
+brew install --cask danieljustus/tap/symmeet-agent    # menu-bar agent app
+```
+
+Prebuilt binaries (CLI `.tar.gz`, agent `.dmg`, checksums, SBOM) are attached
+to every
+[GitHub Release](https://github.com/danieljustus/symaira-meet/releases/latest).
+
+### From source
+
 Build from source requires Swift 6.0+ and macOS 15 or newer:
 
 ```bash
