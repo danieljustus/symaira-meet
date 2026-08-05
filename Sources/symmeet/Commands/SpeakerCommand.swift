@@ -212,7 +212,8 @@ extension SymMeet {
           throw CLIError(
             exitCode: CLIExit.usage.rawValue,
             code: "speaker_not_found",
-            message: "Invalid segment UUID: '\(segment)'.")
+            message: "Invalid segment UUID: '\(segment)'.",
+            isJSON: json)
         }
 
         let turns = try await store.rawTurns(meetingID: normalizedID)

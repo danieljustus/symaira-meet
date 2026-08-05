@@ -30,11 +30,16 @@ final class TranscribeCommandTests: XCTestCase {
     XCTAssertTrue(result.stdout.contains("job"), "job must appear in help")
   }
 
-  func testTranscribeMissingFileExitsWithUsageError() throws {
+  func testTranscribeMissingFileEmitsJSONErrorEnvelope() throws {
     let result = try runCLI(["transcribe", "/nonexistent/audio.wav", "--json"])
     XCTAssertEqual(result.status, 2)
-    XCTAssertTrue(result.stderr.contains("File not found"))
-    XCTAssertEqual(result.stdout, "")
+    XCTAssertEqual(result.stderr, "", "stderr must be clean in --json mode")
+    let envelope = try XCTUnwrap(jsonObject(result.stdout) as? [String: Any])
+    let error = try XCTUnwrap(envelope["error"] as? [String: Any])
+    XCTAssertEqual(error["code"] as? String, "file_not_found")
+    XCTAssertTrue(
+      (error["message"] as? String)?.contains("File not found") ?? false,
+      "envelope message should mention the missing file: \(result.stdout)")
   }
 
   func testTranscribeMissingModelReportsInstallCommand() throws {
@@ -46,13 +51,17 @@ final class TranscribeCommandTests: XCTestCase {
     try Data(count: 100).write(to: dummy)
     let result = try runCLI(["transcribe", dummy.path, "--model", modelID, "--json"])
     XCTAssertEqual(result.status, 1)
+    XCTAssertEqual(result.stderr, "", "stderr must be clean in --json mode")
+    let envelope = try XCTUnwrap(jsonObject(result.stdout) as? [String: Any])
+    let error = try XCTUnwrap(envelope["error"] as? [String: Any])
+    XCTAssertEqual(error["code"] as? String, "model_not_installed")
+    let message = try XCTUnwrap(error["message"] as? String)
     XCTAssertTrue(
-      result.stderr.contains("not installed"),
-      "must report model not installed: \(result.stderr)")
+      message.contains("not installed"),
+      "must report model not installed: \(message)")
     XCTAssertTrue(
-      result.stderr.contains("symmeet model install \(modelID)"),
-      "must suggest install command: \(result.stderr)")
-    XCTAssertEqual(result.stdout, "")
+      message.contains("symmeet model install \(modelID)"),
+      "must suggest install command: \(message)")
   }
 
   func testJobListEmptyShowsNoJobs() throws {
@@ -105,18 +114,25 @@ final class TranscribeCommandTests: XCTestCase {
     XCTAssertEqual(result.stderr, "")
   }
 
-  func testJobShowWithInvalidIDExitsWithUsageError() throws {
+  func testJobShowWithInvalidIDEmitsJSONErrorEnvelope() throws {
     let result = try runCLI(["job", "show", "not-a-uuid", "--json"])
     XCTAssertEqual(result.status, 2)
-    XCTAssertTrue(result.stderr.contains("No job found"))
-    XCTAssertEqual(result.stdout, "")
+    XCTAssertEqual(result.stderr, "", "stderr must be clean in --json mode")
+    let envelope = try XCTUnwrap(jsonObject(result.stdout) as? [String: Any])
+    let error = try XCTUnwrap(envelope["error"] as? [String: Any])
+    XCTAssertEqual(error["code"] as? String, "job_operation_failed")
+    XCTAssertTrue(
+      (error["message"] as? String)?.contains("No job found") ?? false,
+      "envelope message should mention the missing job: \(result.stdout)")
   }
 
-  func testJobShowWithNonexistentMeetingExitsWithError() throws {
+  func testJobShowWithNonexistentMeetingEmitsJSONErrorEnvelope() throws {
     let id = UUID().uuidString.lowercased()
     let result = try runCLI(["job", "show", id, "--json"])
     XCTAssertEqual(result.status, 2)
-    XCTAssertEqual(result.stdout, "")
+    XCTAssertEqual(result.stderr, "", "stderr must be clean in --json mode")
+    let envelope = try XCTUnwrap(jsonObject(result.stdout) as? [String: Any])
+    XCTAssertNotNil(envelope["error"])
   }
 
   func testJobCancelQueuedJob() async throws {
