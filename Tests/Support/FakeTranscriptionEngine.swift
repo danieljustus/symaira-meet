@@ -22,9 +22,21 @@ actor FakeTranscriptionEngine: TranscriptionEngine {
     supportsDiarization: false,
     requiredArchitectures: ["arm64", "x86_64"])
 
+  /// Fires once when `transcribe` reaches the paused point (after all chunks
+  /// are finalized, right before completion), letting tests wait
+  /// deterministically instead of sleeping on a timer.
+  nonisolated let pausedSignal: AsyncStream<Void>
+  private let pausedContinuation: AsyncStream<Void>.Continuation
+
   private var outcome: FakeEngineOutcome = .complete
   private var paused = false
   private var resumeWaiters: [CheckedContinuation<Void, Never>] = []
+
+  init() {
+    let (stream, continuation) = AsyncStream.makeStream(of: Void.self)
+    pausedSignal = stream
+    pausedContinuation = continuation
+  }
 
   func setOutcome(_ outcome: FakeEngineOutcome) {
     self.outcome = outcome
@@ -112,6 +124,7 @@ actor FakeTranscriptionEngine: TranscriptionEngine {
 
   private func waitIfPaused() async {
     guard paused else { return }
+    pausedContinuation.yield()
     await withCheckedContinuation { continuation in
       resumeWaiters.append(continuation)
     }
