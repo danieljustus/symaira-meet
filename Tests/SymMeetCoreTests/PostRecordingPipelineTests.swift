@@ -197,9 +197,12 @@ final class PostRecordingPipelineTests: XCTestCase {
     XCTAssertTrue(outcome.state.isComplete)
     XCTAssertEqual(outcome.diarizationTurns, 1)
     XCTAssertEqual(outcome.alignmentSegments, 1)
-    XCTAssertEqual(try await store.rawTurns(meetingID: normalizedID).count, 1)
-    XCTAssertEqual(try await store.alignment(meetingID: normalizedID).count, 1)
-    XCTAssertEqual(try await store.editedTurns(meetingID: normalizedID).count, 1)
+    let rawTurns = try await store.rawTurns(meetingID: normalizedID)
+    let alignments = try await store.alignment(meetingID: normalizedID)
+    let editedTurns = try await store.editedTurns(meetingID: normalizedID)
+    XCTAssertEqual(rawTurns.count, 1)
+    XCTAssertEqual(alignments.count, 1)
+    XCTAssertEqual(editedTurns.count, 1)
 
     let layout = ArtifactLayout(dataRoot: root)
     let transcript = try String(
@@ -301,11 +304,6 @@ final class PostRecordingPipelineTests: XCTestCase {
       onProgress: { progressCollector.record($0) })
 
     XCTAssertTrue(outcome.state.isReadyForReview)
-    let phases = progressCollector.events.compactMap { event -> PostRecordingPhase? in
-      if case .phaseSucceeded(let p) = event { return p }
-      if case .phaseStarted(let p) = event { return p }
-      return nil
-    }
     // Transcription phase is inferred from the manifest's completed job state
     // without emitting progress events, but ready_for_review should be set.
     XCTAssertTrue(outcome.state.status(of: .transcription) == .succeeded)
