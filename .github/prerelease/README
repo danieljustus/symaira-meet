@@ -1,0 +1,3 @@
+This directory stores prerelease gate reports for released versions.
+
+Each report records the verified repository head, release target, gate checks, findings, and release handoff decision.
