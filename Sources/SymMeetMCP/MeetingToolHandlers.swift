@@ -52,7 +52,9 @@ struct MeetingGetHandler: MCPToolHandler {
       createdAt: manifest.createdAt,
       updatedAt: manifest.updatedAt,
       language: manifest.language,
-      job: manifest.job.map { JobOutput(jobID: $0.jobID.uuidString.lowercased(), state: $0.state.rawValue) },
+      job: manifest.job.map {
+        JobOutput(jobID: $0.jobID.uuidString.lowercased(), state: $0.state.rawValue)
+      },
       consent: ConsentOutput(status: manifest.consent.status.rawValue),
       retention: RetentionOutput(policy: manifest.retention.policy.rawValue)
     )
@@ -83,6 +85,24 @@ struct MeetingTranscribeHandler: MCPToolHandler {
   let toolName = "meeting_transcribe"
   let store: MeetingStore
   let dataRoot: URL
+  /// The model store used for the "is this model installed" gate. Injectable
+  /// for tests; defaults to the user's model directory.
+  let modelStore: ModelStore
+  /// The transcription engine used for the pipeline run. `nil` means the
+  /// built-in stub engine (which produces no segments); injectable for tests.
+  let engine: (any TranscriptionEngine)?
+
+  init(
+    store: MeetingStore,
+    dataRoot: URL,
+    modelStore: ModelStore = ModelStore(),
+    engine: (any TranscriptionEngine)? = nil
+  ) {
+    self.store = store
+    self.dataRoot = dataRoot
+    self.modelStore = modelStore
+    self.engine = engine
+  }
 
   func execute(args: [String: AnyCodable]) async throws -> MCPToolResult {
     guard let file = args["file"]?.asString else {
@@ -94,7 +114,6 @@ struct MeetingTranscribeHandler: MCPToolHandler {
     }
 
     let model = args["model"]?.asString ?? "tiny"
-    let modelStore = ModelStore()
 
     do {
       _ = try await modelStore.verify(id: model)
@@ -109,7 +128,8 @@ struct MeetingTranscribeHandler: MCPToolHandler {
       meetingStore: store
     )
     let sourceURL = URL(fileURLWithPath: file)
-    let languageValue = (args["language"]?.asString ?? "auto") == "auto" ? nil : args["language"]?.asString
+    let languageValue =
+      (args["language"]?.asString ?? "auto") == "auto" ? nil : args["language"]?.asString
     let title = args["title"]?.asString
 
     do {
@@ -122,7 +142,7 @@ struct MeetingTranscribeHandler: MCPToolHandler {
           modelVersion: "",
           engineID: "whisperkit"
         ),
-        engine: StubEngine()
+        engine: engine ?? StubEngine()
       )
 
       let result = TranscribeResultOutput(
@@ -153,7 +173,8 @@ struct MeetingExportHandler: MCPToolHandler {
       let format = ExportFormat(rawValue: formatStr)
     else {
       return .error(
-        "Invalid format. Supported: \(ExportFormat.allCases.map(\.rawValue).joined(separator: ", "))")
+        "Invalid format. Supported: \(ExportFormat.allCases.map(\.rawValue).joined(separator: ", "))"
+      )
     }
 
     let manifest = try await store.load(meetingID: meetingID)
@@ -293,7 +314,9 @@ private struct MeetingGetOutput: Encodable {
 
   private enum CodingKeys: String, CodingKey {
     case meetingID = "meeting_id"
-    case source, createdAt = "created_at", updatedAt = "updated_at"
+    case source
+    case createdAt = "created_at"
+    case updatedAt = "updated_at"
     case language, job, consent, retention, segments
     case segmentCount = "segment_count"
     case segmentLimit = "segment_limit"
@@ -345,7 +368,9 @@ private struct TranscribeResultOutput: Encodable {
   private enum CodingKeys: String, CodingKey {
     case meetingID = "meeting_id"
     case jobID = "job_id"
-    case state, segmentCount = "segment_count", language
+    case state
+    case segmentCount = "segment_count"
+    case language
   }
 }
 
@@ -358,7 +383,9 @@ private struct ExportOutput: Encodable {
 
   private enum CodingKeys: String, CodingKey {
     case meetingID = "meeting_id"
-    case format, segmentSource = "segment_source"
-    case segmentCount = "segment_count", content
+    case format
+    case segmentSource = "segment_source"
+    case segmentCount = "segment_count"
+    case content
   }
 }
