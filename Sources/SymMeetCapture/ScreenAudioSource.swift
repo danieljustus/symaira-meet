@@ -52,6 +52,28 @@ public actor ScreenAudioSource {
   }
 }
 
+// MARK: - CaptureSession seam
+//
+// Conforms to the internal `SystemAudioCapturing` protocol so CaptureSession
+// can drive system-audio capture through a protocol-typed source. The
+// shareable-content fetch and stream configuration live here; runtime
+// behavior is unchanged (same API, same values as the previous inline code).
+
+extension ScreenAudioSource: SystemAudioCapturing {
+  func start(
+    handler: @escaping @Sendable (CMSampleBuffer) -> Void
+  ) async throws {
+    let content = try await SCShareableContent.excludingDesktopWindows(
+      true,
+      onScreenWindowsOnly: false
+    )
+    let configuration = SCStreamConfiguration()
+    configuration.sampleRate = 48000
+    configuration.channelCount = 2
+    try await start(content: content, configuration: configuration, handler: handler)
+  }
+}
+
 // MARK: - SCStreamOutput delegate
 
 private final class StreamAudioOutput: NSObject, SCStreamOutput, @unchecked Sendable {

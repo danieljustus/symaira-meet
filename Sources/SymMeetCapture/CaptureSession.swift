@@ -69,20 +69,52 @@ public struct CaptureResult: Sendable {
   }
 }
 
+// MARK: - Capture source seams
+//
+// Internal protocols that let tests inject fake sources so the session's
+// lifecycle, buffer routing, and error handling can be exercised without
+// touching real capture hardware or ScreenCaptureKit.
+
+internal protocol SystemAudioCapturing: AnyObject, Sendable {
+  func start(handler: @escaping @Sendable (CMSampleBuffer) -> Void) async throws
+  func stop() async throws
+}
+
+internal protocol MicrophoneCapturing: AnyObject, Sendable {
+  func start(
+    deviceID: String?,
+    handler: @escaping @Sendable (CMSampleBuffer) -> Void
+  ) async throws
+  func stop() async
+}
+
 /// The main capture session: coordinates system-audio and microphone capture
 /// with synchronized timestamps, bounded buffers, and recoverable artifacts.
 public actor CaptureSession {
   private var stateMachine = CaptureStateMachine()
   private var config: CaptureSessionConfiguration?
   private let clock = ClockSynchronizer()
-  private let screenSource = ScreenAudioSource()
-  private let micSource = MicrophoneAudioSource()
+  private let screenSource: any SystemAudioCapturing
+  private let micSource: any MicrophoneCapturing
   private var systemWriter: TrackWriter?
   private var micWriter: TrackWriter?
   private var diagnostics = CaptureDiagnostics()
   private var pauseStartTime: CMTime?
 
-  public init() {}
+  public init() {
+    self.screenSource = ScreenAudioSource()
+    self.micSource = MicrophoneAudioSource()
+  }
+
+  /// Test seam: injects fake capture sources so the session can be driven
+  /// without real hardware. Internal only; never used by production callers.
+  internal init(
+    systemSource: any SystemAudioCapturing,
+    micSource: any MicrophoneCapturing
+  ) {
+    self.screenSource = systemSource
+    self.micSource = micSource
+  }
 
   /// Current state of the session.
   public var state: CaptureState { stateMachine.state }
@@ -127,15 +159,7 @@ public actor CaptureSession {
     if case .disabled = configuration.systemAudio {
       // skip
     } else {
-      let content = try await SCShareableContent.excludingDesktopWindows(
-        true,
-        onScreenWindowsOnly: false
-      )
-      let cfg = SCStreamConfiguration()
-      cfg.sampleRate = 48000
-      cfg.channelCount = 2
-      try await screenSource.start(content: content, configuration: cfg) {
-        [weak self] buffer in
+      try await screenSource.start { [weak self] buffer in
         let wrapped = SendableSampleBuffer(buffer: buffer)
         Task { await self?.handleSystemBuffer(wrapped) }
       }
@@ -144,7 +168,7 @@ public actor CaptureSession {
     // Start microphone capture
     switch configuration.microphone {
     case .defaultDevice:
-      try await micSource.start { [weak self] buffer in
+      try await micSource.start(deviceID: nil) { [weak self] buffer in
         let wrapped = SendableSampleBuffer(buffer: buffer)
         Task { await self?.handleMicBuffer(wrapped) }
       }
