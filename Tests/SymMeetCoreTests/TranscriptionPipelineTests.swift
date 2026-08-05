@@ -119,9 +119,13 @@ final class TranscriptionPipelineTests: XCTestCase {
       )
     }
 
-    // Give the run time to reach the paused point (after all chunks are
-    // finalized, right before completion) before requesting cancellation.
-    try await Task.sleep(for: .milliseconds(50))
+    // Wait deterministically until the run has reached the paused point
+    // (after all chunks are finalized, right before completion) before
+    // requesting cancellation -- the fake engine signals it explicitly, so
+    // there is no timing race.
+    for await _ in engine.pausedSignal {
+      break
+    }
     await pipeline.requestCancellation()
     await engine.resume()
     let outcome = try await task.value
