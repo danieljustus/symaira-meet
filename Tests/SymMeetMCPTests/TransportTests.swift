@@ -63,6 +63,53 @@ final class TransportTests: XCTestCase {
     XCTAssertNil(parsed["id"], "Notification must not have an id field")
   }
 
+  // MARK: - Stdio framing (newline-delimited JSON)
+
+  func testResponseFrameIsNewlineDelimited() throws {
+    let response = JSONRPCResponse(id: .integer(7), result: AnyCodable(["ok": true]))
+    let frame = try JSONRPCWriter.frame(response)
+
+    // Exactly one frame: compact JSON terminated by a single newline.
+    XCTAssertEqual(frame.last, 0x0A)
+    XCTAssertEqual(frame.filter { $0 == 0x0A }.count, 1)
+
+    // Dropping the terminator yields the plain JSON-RPC message.
+    let parsed = try JSONSerialization.jsonObject(with: frame.dropLast()) as! [String: Any]
+    XCTAssertEqual(parsed["jsonrpc"] as? String, "2.0")
+    XCTAssertEqual(parsed["id"] as? Int, 7)
+  }
+
+  func testFrameKeepsMultiLineTextOnSingleLine() throws {
+    // Text containing newlines must be escaped by the encoder so the frame
+    // stays one line — a raw newline inside a message would break
+    // newline-delimited framing.
+    let response = JSONRPCResponse(
+      id: .string("multi"),
+      result: AnyCodable(["text": "line1\nline2\r\nline3"])
+    )
+    let frame = try JSONRPCWriter.frame(response)
+
+    XCTAssertEqual(frame.filter { $0 == 0x0A }.count, 1, "Frame must contain no embedded newlines")
+    XCTAssertEqual(frame.last, 0x0A)
+
+    // The escaped text round-trips through JSON decoding unchanged.
+    let parsed = try JSONSerialization.jsonObject(with: frame.dropLast()) as! [String: Any]
+    let result = parsed["result"] as! [String: Any]
+    XCTAssertEqual(result["text"] as? String, "line1\nline2\r\nline3")
+  }
+
+  func testNotificationFrameIsNewlineDelimited() throws {
+    let notification = JSONRPCNotification(method: "notifications/initialized")
+    let frame = try JSONRPCWriter.frame(notification)
+
+    XCTAssertEqual(frame.last, 0x0A)
+    XCTAssertEqual(frame.filter { $0 == 0x0A }.count, 1)
+
+    let parsed = try JSONSerialization.jsonObject(with: frame.dropLast()) as! [String: Any]
+    XCTAssertEqual(parsed["jsonrpc"] as? String, "2.0")
+    XCTAssertEqual(parsed["method"] as? String, "notifications/initialized")
+  }
+
   // MARK: - JSONRPCError constants
 
   func testStandardErrors() {

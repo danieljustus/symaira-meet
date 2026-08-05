@@ -41,6 +41,12 @@ public struct MCPServer: Sendable {
 
   /// Runs the MCP server, reading JSON-RPC messages from stdin and writing
   /// responses to stdout. Runs until stdin closes (EOF).
+  ///
+  /// Framing rule (MCP stdio spec): newline-delimited JSON — each line on
+  /// stdin is exactly one JSON-RPC message, so messages must not contain
+  /// embedded newlines. Responses are written by `JSONRPCWriter` as single
+  /// newline-terminated frames; stdout never carries anything but protocol
+  /// frames (logs go to stderr).
   public func run() async {
     JSONRPCDiagnostics.log("symmeet MCP server starting (schema \(SymMeetMCP.protocolSchemaVersion))")
 
