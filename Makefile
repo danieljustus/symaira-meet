@@ -1,5 +1,9 @@
 BINARY := symmeet
 
+# Coverage floor enforced by scripts/coverage-report.sh (see `make coverage`).
+# Override per invocation: make coverage COVERAGE_FLOOR=60
+COVERAGE_FLOOR ?= 55
+
 .PHONY: build test coverage lint clean check-xctest
 
 build:
@@ -20,7 +24,7 @@ test: check-xctest
 
 coverage: check-xctest
 	swift test --enable-code-coverage
-	scripts/coverage-report.sh .build/debug/codecov coverage.lcov
+	COVERAGE_FLOOR="$(COVERAGE_FLOOR)" scripts/coverage-report.sh .build/debug/codecov coverage.lcov
 
 lint:
 	swift format lint --recursive Sources Tests
