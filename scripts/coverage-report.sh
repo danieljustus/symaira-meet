@@ -53,5 +53,13 @@ for test_bin in "${TEST_BINS[@]:1}"; do
   LLVM_COV_ARGS+=( -object "$test_bin" )
 done
 
+# The .xctest bundles do not link the package's main executable, so its own
+# sources would be missing from the export. Add the executable binary when it
+# exists so CLI code shows up in the report (override with MAIN_EXE=...).
+MAIN_EXE="${MAIN_EXE:-.build/debug/symmeet}"
+if [ -x "$MAIN_EXE" ]; then
+  LLVM_COV_ARGS+=( -object "$MAIN_EXE" )
+fi
+
 xcrun llvm-cov export -format=lcov -instr-profile "$PROFDATA" "${LLVM_COV_ARGS[@]}" > "$OUT"
 echo "wrote $OUT"
