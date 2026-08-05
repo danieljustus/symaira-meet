@@ -79,12 +79,30 @@ if [[ ! "$COVERAGE_FLOOR" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then
 fi
 
 # Sum LF (lines found) and LH (lines hit) across every lcov record; % = LH/LF.
+# Only package production sources count toward the gate: records from
+# dependency checkouts (.build/checkouts) and generated/derived files would
+# otherwise dominate the denominator and hide regressions in our own code.
 LF_TOTAL=0
 LH_TOTAL=0
+CURRENT_SF=""
 while IFS=: read -r key value; do
   case "$key" in
-    LF) LF_TOTAL=$((LF_TOTAL + ${value//,/})) ;;
-    LH) LH_TOTAL=$((LH_TOTAL + ${value//,/})) ;;
+    SF)
+      CURRENT_SF="$value"
+      KEEP=0
+      case "$CURRENT_SF" in
+        */Sources/*) KEEP=1 ;;
+      esac
+      case "$CURRENT_SF" in
+        */.build/*) KEEP=0 ;;
+      esac
+      ;;
+    LF)
+      if [ "$KEEP" -eq 1 ]; then LF_TOTAL=$((LF_TOTAL + ${value//,/})); fi
+      ;;
+    LH)
+      if [ "$KEEP" -eq 1 ]; then LH_TOTAL=$((LH_TOTAL + ${value//,/})); fi
+      ;;
   esac
 done < "$OUT"
 
