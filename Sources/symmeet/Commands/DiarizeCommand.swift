@@ -41,7 +41,8 @@ extension SymMeet {
       } else {
         throw CLIError(
           exitCode: CLIExit.usage.rawValue, code: "invalid_speakers",
-          message: "Invalid --speakers value '\(speakers)'. Use 'auto' or a positive integer.")
+          message: "Invalid --speakers value '\(speakers)'. Use 'auto' or a positive integer.",
+          isJSON: json)
       }
 
       let pipeline = PostRecordingPipeline(dataRoot: paths.dataDirectory)

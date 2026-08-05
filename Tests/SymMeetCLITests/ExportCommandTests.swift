@@ -79,9 +79,11 @@ final class ExportCommandTests: XCTestCase {
 
     let result = try runCLI(["export", meetingID, "--format", "json", "--output", "-", "--json"])
 
-    XCTAssertNotEqual(result.status, 0)
-    XCTAssertEqual(result.stdout, "")
-    XCTAssertTrue(result.stderr.contains("--output -"), result.stderr)
+    XCTAssertEqual(result.status, 2)
+    XCTAssertEqual(result.stderr, "", "stderr must be clean in --json mode")
+    let envelope = try XCTUnwrap(jsonObject(result.stdout) as? [String: Any])
+    let error = try XCTUnwrap(envelope["error"] as? [String: Any])
+    XCTAssertEqual(error["code"] as? String, "export_failed")
   }
 
   // MARK: - Reproducibility (rules: byte-identical re-export)
@@ -260,6 +262,10 @@ final class ExportCommandTests: XCTestCase {
     var line = data
     line.append(0x0A)
     try line.write(to: layout.editedSegmentsURL(in: directory))
+  }
+
+  private func jsonObject(_ text: String) throws -> Any {
+    try JSONSerialization.jsonObject(with: Data(text.utf8))
   }
 
   private func runCLI(_ arguments: [String]) throws -> CLIResult {

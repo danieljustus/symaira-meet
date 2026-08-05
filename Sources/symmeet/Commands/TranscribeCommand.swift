@@ -32,7 +32,7 @@ extension SymMeet {
       guard FileManager.default.fileExists(atPath: sourceURL.path) else {
         throw CLIError(
           exitCode: CLIExit.usage.rawValue, code: "file_not_found",
-          message: "File not found: \(file)")
+          message: "File not found: \(file)", isJSON: json)
       }
 
       let modelStore = ModelStore()
@@ -43,7 +43,8 @@ extension SymMeet {
         throw CLIError(
           exitCode: CLIExit.runtimeFailure.rawValue, code: "model_not_installed",
           message:
-            "Model '\(model)' is not installed. Run: symmeet model install \(model)")
+            "Model '\(model)' is not installed. Run: symmeet model install \(model)",
+          isJSON: json)
       } catch {
         throw CLIError.from(error, isJSON: json)
       }
@@ -107,17 +108,19 @@ extension SymMeet {
       } catch PipelineError.engineFailed(let message) {
         throw CLIError(
           exitCode: CLIExit.runtimeFailure.rawValue, code: "engine_failed",
-          message: message)
+          message: message, isJSON: json)
       } catch PipelineError.engineProducedNoCompletion {
         throw CLIError(
           exitCode: CLIExit.runtimeFailure.rawValue,
           code: "engine_produced_no_completion",
-          message: PipelineError.engineProducedNoCompletion.localizedDescription)
+          message: PipelineError.engineProducedNoCompletion.localizedDescription,
+          isJSON: json)
       } catch PipelineError.missingOriginalAsset {
         throw CLIError(
           exitCode: CLIExit.runtimeFailure.rawValue,
           code: "missing_original_asset",
-          message: PipelineError.missingOriginalAsset.localizedDescription)
+          message: PipelineError.missingOriginalAsset.localizedDescription,
+          isJSON: json)
       } catch {
         throw CLIError.from(error, isJSON: json)
       }

@@ -119,6 +119,31 @@ final class CLITests: XCTestCase {
     XCTAssertFalse(unsupported.stderr.isEmpty)
   }
 
+  func testProcessJSONInvalidSpeakersEmitsErrorEnvelope() async throws {
+    let dataRoot = root.appending(path: "data/symmeet")
+    let manifest = MeetingManifest(
+      meetingID: UUID(),
+      source: .imported,
+      createdAt: Date(timeIntervalSince1970: 0),
+      updatedAt: Date(timeIntervalSince1970: 0),
+      consent: ConsentState(status: .required),
+      retention: RetentionMetadata(policy: .keep)
+    )
+    try await MeetingStore(dataRoot: dataRoot).create(manifest)
+    let meetingID = manifest.meetingID.uuidString.lowercased()
+
+    let result = try runCLI(["process", meetingID, "--json", "--speakers", "bogus"])
+
+    XCTAssertEqual(result.status, 2, "stderr: \(result.stderr)")
+    XCTAssertEqual(result.stderr, "", "stderr must be clean in --json mode")
+    let envelope = try XCTUnwrap(jsonObject(result.stdout) as? [String: Any])
+    let error = try XCTUnwrap(envelope["error"] as? [String: Any])
+    XCTAssertEqual(error["code"] as? String, "invalid_speakers")
+    XCTAssertTrue(
+      (error["message"] as? String)?.contains("--speakers") ?? false,
+      "envelope message should mention --speakers: \(result.stdout)")
+  }
+
   func testGeneratedCompletionIsAvailableForSupportedShell() throws {
     let result = try runCLI(["completion", "zsh"])
 

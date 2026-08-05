@@ -70,7 +70,7 @@ extension SymMeet {
       do {
         let paths = SymMeetPaths()
         let coordinator = JobCoordinator(dataRoot: paths.dataDirectory)
-        let job = try await resolveJob(coordinator: coordinator, identifier: jobID)
+        let job = try await resolveJob(coordinator: coordinator, identifier: jobID, isJSON: json)
 
         if json {
           try Output.writeJSON(job)
@@ -111,7 +111,7 @@ extension SymMeet {
       do {
         let paths = SymMeetPaths()
         let coordinator = JobCoordinator(dataRoot: paths.dataDirectory)
-        let job = try await resolveJob(coordinator: coordinator, identifier: jobID)
+        let job = try await resolveJob(coordinator: coordinator, identifier: jobID, isJSON: json)
 
         guard job.status == .queued || job.status.isActive else {
           let message = "Job is already in terminal state: \(job.status.rawValue)."
@@ -168,20 +168,22 @@ extension SymMeet {
       do {
         let paths = SymMeetPaths()
         let coordinator = JobCoordinator(dataRoot: paths.dataDirectory)
-        let job = try await resolveJob(coordinator: coordinator, identifier: jobID)
+        let job = try await resolveJob(coordinator: coordinator, identifier: jobID, isJSON: json)
 
         guard [.failed, .cancelled, .interrupted].contains(job.status) else {
           throw CLIError(
             exitCode: CLIExit.usage.rawValue,
             code: "job_not_found",
-            message: "Job is not in a retryable state (current: \(job.status.rawValue)).")
+            message: "Job is not in a retryable state (current: \(job.status.rawValue)).",
+            isJSON: json)
         }
 
         guard let engineProvenance = job.engine else {
           throw CLIError(
             exitCode: CLIExit.runtimeFailure.rawValue,
             code: "job_cannot_cancel",
-            message: "Job has no engine provenance; cannot retry.")
+            message: "Job has no engine provenance; cannot retry.",
+            isJSON: json)
         }
 
         let modelStore = ModelStore()
@@ -193,7 +195,8 @@ extension SymMeet {
           throw CLIError(
             exitCode: CLIExit.runtimeFailure.rawValue,
             code: "job_not_found",
-            message: "Model '\(id)' is not installed. Run: symmeet model install \(id)")
+            message: "Model '\(id)' is not installed. Run: symmeet model install \(id)",
+            isJSON: json)
         }
 
         let pipeline = TranscriptionPipeline(dataRoot: paths.dataDirectory)
@@ -248,8 +251,9 @@ extension SymMeet {
 
 /// Resolves a job by trying the identifier as a meeting ID first, then
 /// scanning all jobs for a matching job ID.
-private func resolveJob(coordinator: JobCoordinator, identifier: String) async throws
-  -> TranscriptionJob
+private func resolveJob(
+  coordinator: JobCoordinator, identifier: String, isJSON: Bool
+) async throws -> TranscriptionJob
 {
   // Try as a meeting UUID first (the most common lookup path).
   if let meetingID = UUID(uuidString: identifier) {
@@ -272,7 +276,8 @@ private func resolveJob(coordinator: JobCoordinator, identifier: String) async t
   throw CLIError(
     exitCode: CLIExit.usage.rawValue,
     code: "job_operation_failed",
-    message: "No job found for identifier: \(identifier)")
+    message: "No job found for identifier: \(identifier)",
+    isJSON: isJSON)
 }
 
 // MARK: - Output types

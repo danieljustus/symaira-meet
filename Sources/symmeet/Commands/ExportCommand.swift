@@ -52,7 +52,8 @@ extension SymMeet {
           code: "unknown_format",
           message:
             "Unknown format '\(format)'. Supported: "
-            + ExportFormat.allCases.map(\.rawValue).joined(separator: ", ") + ".")
+            + ExportFormat.allCases.map(\.rawValue).joined(separator: ", ") + ".",
+          isJSON: json)
       }
 
       var requestedSource: ExportSegmentSource?
@@ -61,7 +62,8 @@ extension SymMeet {
           throw CLIError(
             exitCode: CLIExit.usage.rawValue,
             code: "invalid_meeting_id",
-            message: "Unknown segment source '\(segments)'. Supported: raw, edited.")
+            message: "Unknown segment source '\(segments)'. Supported: raw, edited.",
+            isJSON: json)
         }
         requestedSource = parsed
       }
@@ -71,7 +73,8 @@ extension SymMeet {
         throw CLIError(
           exitCode: CLIExit.usage.rawValue,
           code: "export_failed",
-          message: "--json cannot be combined with --output -.")
+          message: "--json cannot be combined with --output -.",
+          isJSON: json)
       }
 
       do {

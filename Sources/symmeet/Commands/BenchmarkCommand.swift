@@ -24,7 +24,8 @@ extension SymMeet {
         throw CLIError(
           exitCode: CLIExit.usage.rawValue,
           code: "file_not_found",
-          message: "File not found: \(file)")
+          message: "File not found: \(file)",
+          isJSON: json)
       }
 
       let modelStore = ModelStore()
@@ -35,7 +36,8 @@ extension SymMeet {
         throw CLIError(
           exitCode: CLIExit.usage.rawValue,
           code: "model_not_installed",
-          message: "Model '\(model)' is not installed. Run: symmeet model install \(model)")
+          message: "Model '\(model)' is not installed. Run: symmeet model install \(model)",
+          isJSON: json)
       } catch {
         throw CLIError.from(error, isJSON: json)
       }
