@@ -1,4 +1,5 @@
 import Foundation
+import SymairaMCP
 import XCTest
 
 @testable import SymMeetMCP
@@ -8,21 +9,20 @@ final class MCPServerToolsCallTests: XCTestCase {
   func testToolsCallRunsMeetingListThroughServer() async throws {
     let root = try makeTemporaryDirectory()
     defer { try? FileManager.default.removeItem(at: root) }
-    let server = MCPServer(agentBridge: LocalAgentBridge(), dataRoot: root)
+    let harness = MCPPipeHarness(
+      server: MeetMCPServer(agentBridge: LocalAgentBridge(), dataRoot: root))
+    defer { try? harness.clientWrite.close() }
 
-    let response = await server.handleRequest(
-      JSONRPCRequest(
-        id: .integer(1), method: "tools/call",
-        params: [
-          "name": AnyCodable("meeting_list"),
-          "arguments": AnyCodable([String: Any]()),
-        ]))
+    try harness.send(
+      #"{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"meeting_list","arguments":{}}}"#
+    )
+    let envelope = try await harness.nextResponse()
+    XCTAssertEqual(envelope.id, .number(1))
+    XCTAssertNil(envelope.error)
 
-    let result = try XCTUnwrap(response.result?.asDict)
-    XCTAssertEqual(result["isError"] as? Bool, false)
-    let content = try XCTUnwrap(result["content"] as? [Any])
-    let first = try XCTUnwrap(content.first as? [String: String])
-    let text = try XCTUnwrap(first["text"])
+    let result = try XCTUnwrap(try decodeResult(envelope, as: MCPCallToolResult.self))
+    XCTAssertEqual(result.isError, false)
+    let text = try XCTUnwrap(result.content.first?.text)
     XCTAssertTrue(text.contains("\"meetings\""))
     XCTAssertTrue(text.contains("\"diagnostics\""))
   }
@@ -30,18 +30,16 @@ final class MCPServerToolsCallTests: XCTestCase {
   func testToolsCallUnknownToolReturnsToolError() async throws {
     let root = try makeTemporaryDirectory()
     defer { try? FileManager.default.removeItem(at: root) }
-    let server = MCPServer(dataRoot: root)
+    let harness = MCPPipeHarness(server: MeetMCPServer(dataRoot: root))
+    defer { try? harness.clientWrite.close() }
 
-    let response = await server.handleRequest(
-      JSONRPCRequest(
-        id: .integer(2), method: "tools/call",
-        params: [
-          "name": AnyCodable("no_such_tool"),
-          "arguments": AnyCodable([String: Any]()),
-        ]))
-
-    XCTAssertNil(response.result)
-    XCTAssertEqual(response.error?.code, -32000)
-    XCTAssertTrue(response.error?.message.contains("Unknown tool: no_such_tool") ?? false)
+    try harness.send(
+      #"{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"no_such_tool","arguments":{}}}"#
+    )
+    let envelope = try await harness.nextResponse()
+    XCTAssertEqual(envelope.id, .number(2))
+    XCTAssertNil(envelope.result)
+    XCTAssertEqual(envelope.error?.code, -32603)
+    XCTAssertTrue(envelope.error?.message.contains("Unknown tool: no_such_tool") ?? false)
   }
 }

@@ -11,7 +11,7 @@ extension SymMeet {
 
     mutating func run() async throws {
       let server = MCPServer()
-      await server.run()
+      try await server.run()
     }
   }
 }

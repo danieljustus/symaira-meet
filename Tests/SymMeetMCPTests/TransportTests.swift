@@ -1,127 +1,147 @@
+import SymairaMCP
 import XCTest
 
 @testable import SymMeetMCP
 
 final class TransportTests: XCTestCase {
 
-  // MARK: - JSON-RPC framing
-
-  func testRequestEncoding() throws {
-    let request = JSONRPCRequest(id: .integer(1), method: "initialize")
-    let data = try JSONEncoder().encode(request)
-    let json = String(decoding: data, as: UTF8.self)
-
-    XCTAssertTrue(json.contains("\"jsonrpc\":\"2.0\""))
-    XCTAssertTrue(json.contains("\"method\":\"initialize\""))
-    XCTAssertTrue(json.contains("\"id\":1"))
-  }
-
-  func testResponseEncoding() throws {
-    let response = JSONRPCResponse(id: .integer(1), result: AnyCodable(["ok": true]))
-    let data = try JSONEncoder().encode(response)
-    let json = String(decoding: data, as: UTF8.self)
-
-    XCTAssertTrue(json.contains("\"jsonrpc\":\"2.0\""))
-    XCTAssertTrue(json.contains("\"id\":1"))
-    XCTAssertNil(response.error)
-  }
-
-  func testErrorResponseEncoding() throws {
-    let response = JSONRPCResponse(id: .integer(1), error: .methodNotFound)
-    let data = try JSONEncoder().encode(response)
-    let json = String(decoding: data, as: UTF8.self)
-
-    XCTAssertTrue(json.contains("-32601"))
-    XCTAssertTrue(json.contains("Method not found"))
-    XCTAssertNil(response.result)
-  }
-
-  func testJSONRPCIDVariants() throws {
-    let stringID = JSONRPCID.string("abc-123")
-    let intID = JSONRPCID.integer(42)
-    let nullID = JSONRPCID.null
-
-    let encoder = JSONEncoder()
-
-    let stringData = try encoder.encode(JSONRPCResponse(id: stringID, result: AnyCodable("ok")))
-    XCTAssertTrue(String(decoding: stringData, as: UTF8.self).contains("\"abc-123\""))
-
-    let intData = try encoder.encode(JSONRPCResponse(id: intID, result: AnyCodable("ok")))
-    XCTAssertTrue(String(decoding: intData, as: UTF8.self).contains("42"))
-
-    let nullData = try encoder.encode(JSONRPCResponse(id: nullID, result: AnyCodable("ok")))
-    XCTAssertTrue(String(decoding: nullData, as: UTF8.self).contains("null"))
-  }
-
-  func testNotificationEncoding() throws {
-    let notification = JSONRPCNotification(method: "notifications/initialized")
-    let data = try JSONEncoder().encode(notification)
-    let parsed = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-
-    XCTAssertEqual(parsed["jsonrpc"] as? String, "2.0")
-    XCTAssertEqual(parsed["method"] as? String, "notifications/initialized")
-    XCTAssertNil(parsed["id"], "Notification must not have an id field")
-  }
-
   // MARK: - Stdio framing (newline-delimited JSON)
 
-  func testResponseFrameIsNewlineDelimited() throws {
-    let response = JSONRPCResponse(id: .integer(7), result: AnyCodable(["ok": true]))
-    let frame = try JSONRPCWriter.frame(response)
+  func testResponseFrameIsNewlineDelimited() async throws {
+    let root = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let harness = MCPPipeHarness(server: MeetMCPServer(dataRoot: root))
+    defer { try? harness.clientWrite.close() }
 
-    // Exactly one frame: compact JSON terminated by a single newline.
-    XCTAssertEqual(frame.last, 0x0A)
-    XCTAssertEqual(frame.filter { $0 == 0x0A }.count, 1)
+    try harness.send(#"{"jsonrpc":"2.0","id":7,"method":"ping"}"#)
+    let maybeLine = try await harness.nextLine()
+    let line = try XCTUnwrap(maybeLine)
 
-    // Dropping the terminator yields the plain JSON-RPC message.
-    let parsed = try JSONSerialization.jsonObject(with: frame.dropLast()) as! [String: Any]
-    XCTAssertEqual(parsed["jsonrpc"] as? String, "2.0")
-    XCTAssertEqual(parsed["id"] as? Int, 7)
+    // A response is exactly one line: no raw newline inside the frame.
+    XCTAssertFalse(line.contains("\n"), "Frame must contain no embedded newlines")
+    let envelope = try JSONDecoder().decode(ResponseEnvelope.self, from: Data(line.utf8))
+    XCTAssertEqual(envelope.id, .number(7))
+    XCTAssertEqual(envelope.result, .object([:]))
   }
 
-  func testFrameKeepsMultiLineTextOnSingleLine() throws {
+  func testFrameKeepsMultiLineTextOnSingleLine() async throws {
     // Text containing newlines must be escaped by the encoder so the frame
     // stays one line — a raw newline inside a message would break
     // newline-delimited framing.
-    let response = JSONRPCResponse(
-      id: .string("multi"),
-      result: AnyCodable(["text": "line1\nline2\r\nline3"])
+    let root = try makeTemporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: root) }
+    let harness = MCPPipeHarness(server: MeetMCPServer(dataRoot: root))
+    defer { try? harness.clientWrite.close() }
+
+    try harness.send(
+      #"{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"meeting_list","arguments":{}}}"#
     )
-    let frame = try JSONRPCWriter.frame(response)
+    let maybeLine = try await harness.nextLine()
+    let line = try XCTUnwrap(maybeLine)
+    XCTAssertFalse(line.contains("\n"), "Frame must contain no embedded newlines")
 
-    XCTAssertEqual(frame.filter { $0 == 0x0A }.count, 1, "Frame must contain no embedded newlines")
-    XCTAssertEqual(frame.last, 0x0A)
-
-    // The escaped text round-trips through JSON decoding unchanged.
-    let parsed = try JSONSerialization.jsonObject(with: frame.dropLast()) as! [String: Any]
-    let result = parsed["result"] as! [String: Any]
-    XCTAssertEqual(result["text"] as? String, "line1\nline2\r\nline3")
+    // The JSON payload round-trips, and its text content may itself contain
+    // escaped newlines.
+    let envelope = try JSONDecoder().decode(ResponseEnvelope.self, from: Data(line.utf8))
+    XCTAssertEqual(envelope.id, .number(8))
+    XCTAssertNil(envelope.error)
   }
 
-  func testNotificationFrameIsNewlineDelimited() throws {
-    let notification = JSONRPCNotification(method: "notifications/initialized")
-    let frame = try JSONRPCWriter.frame(notification)
+  // MARK: - Server handles messages
 
-    XCTAssertEqual(frame.last, 0x0A)
-    XCTAssertEqual(frame.filter { $0 == 0x0A }.count, 1)
+  func testServerInitialize() async throws {
+    let harness = MCPPipeHarness(server: MeetMCPServer())
+    defer { try? harness.clientWrite.close() }
 
-    let parsed = try JSONSerialization.jsonObject(with: frame.dropLast()) as! [String: Any]
-    XCTAssertEqual(parsed["jsonrpc"] as? String, "2.0")
-    XCTAssertEqual(parsed["method"] as? String, "notifications/initialized")
+    try harness.send(
+      #"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test-client","version":"1.0"}}}"#
+    )
+    let envelope = try await harness.nextResponse()
+    XCTAssertEqual(envelope.id, .number(1))
+    XCTAssertNil(envelope.error)
+
+    let result = try XCTUnwrap(try decodeResult(envelope, as: MCPInitializeResult.self))
+    XCTAssertEqual(result.protocolVersion, "2024-11-05")
+    XCTAssertEqual(result.serverInfo.name, "symmeet")
+    XCTAssertEqual(result.serverInfo.version, "0.1.0")
+    if case .object(let tools) = result.capabilities["tools"] {
+      XCTAssertEqual(tools["listChanged"], .bool(false))
+    } else {
+      XCTFail(
+        "Expected a tools capability, got \(String(describing: result.capabilities["tools"]))")
+    }
   }
 
-  // MARK: - JSONRPCError constants
+  func testServerToolsList() async throws {
+    let harness = MCPPipeHarness(server: MeetMCPServer())
+    defer { try? harness.clientWrite.close() }
 
-  func testStandardErrors() {
-    XCTAssertEqual(JSONRPCError.parseError.code, -32700)
-    XCTAssertEqual(JSONRPCError.invalidRequest.code, -32600)
-    XCTAssertEqual(JSONRPCError.methodNotFound.code, -32601)
-    XCTAssertEqual(JSONRPCError.invalidParams.code, -32602)
-    XCTAssertEqual(JSONRPCError.internalError.code, -32603)
+    try harness.send(#"{"jsonrpc":"2.0","id":2,"method":"tools/list"}"#)
+    let envelope = try await harness.nextResponse()
+    XCTAssertEqual(envelope.id, .number(2))
+    XCTAssertNil(envelope.error)
 
-    let toolErr = JSONRPCError.toolError("test message")
-    XCTAssertEqual(toolErr.code, -32000)
-    XCTAssertEqual(toolErr.message, "test message")
+    let result = try XCTUnwrap(envelope.result)
+    let tools = try XCTUnwrap(result.objectValue?["tools"]?.arrayValue)
+    XCTAssertEqual(tools.count, 9)
+    XCTAssertEqual(tools.first?.objectValue?["name"]?.stringValue, "meeting_list")
+  }
+
+  func testServerPing() async throws {
+    let harness = MCPPipeHarness(server: MeetMCPServer())
+    defer { try? harness.clientWrite.close() }
+
+    try harness.send(#"{"jsonrpc":"2.0","id":3,"method":"ping"}"#)
+    let envelope = try await harness.nextResponse()
+    XCTAssertEqual(envelope.id, .number(3))
+    XCTAssertNil(envelope.error)
+    XCTAssertEqual(envelope.result, .object([:]))
+  }
+
+  func testServerUnknownMethod() async throws {
+    let harness = MCPPipeHarness(server: MeetMCPServer())
+    defer { try? harness.clientWrite.close() }
+
+    try harness.send(#"{"jsonrpc":"2.0","id":4,"method":"unknown/method"}"#)
+    let envelope = try await harness.nextResponse()
+    XCTAssertEqual(envelope.id, .number(4))
+    XCTAssertNil(envelope.result)
+    XCTAssertEqual(envelope.error?.code, -32601)
+    XCTAssertTrue(envelope.error?.message.contains("unknown/method") ?? false)
+  }
+
+  func testServerUnknownTool() async throws {
+    let harness = MCPPipeHarness(server: MeetMCPServer())
+    defer { try? harness.clientWrite.close() }
+
+    try harness.send(
+      #"{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"nonexistent_tool","arguments":{}}}"#
+    )
+    let envelope = try await harness.nextResponse()
+    XCTAssertEqual(envelope.id, .number(5))
+    XCTAssertNil(envelope.result)
+    XCTAssertEqual(envelope.error?.code, -32603)
+    XCTAssertTrue(envelope.error?.message.contains("Unknown tool") ?? false)
+  }
+
+  func testServerMeetingListUsesInjectedTemporaryDataRoot() async throws {
+    let root = FileManager.default.temporaryDirectory
+      .appendingPathComponent("symmeet-mcp-tests-\(UUID().uuidString)", isDirectory: true)
+    defer { try? FileManager.default.removeItem(at: root) }
+
+    let harness = MCPPipeHarness(server: MeetMCPServer(dataRoot: root))
+    defer { try? harness.clientWrite.close() }
+
+    try harness.send(
+      #"{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"meeting_list","arguments":{}}}"#
+    )
+    let envelope = try await harness.nextResponse()
+    XCTAssertEqual(envelope.id, .number(6))
+    XCTAssertNil(envelope.error)
+    XCTAssertTrue(
+      FileManager.default.fileExists(atPath: root.appendingPathComponent("meetings").path),
+      "The handler must use the server's injected temporary data root"
+    )
   }
 
   // MARK: - MCPToolResult
@@ -139,83 +159,5 @@ final class TransportTests: XCTestCase {
     XCTAssertEqual(result.content.count, 1)
     XCTAssertEqual(result.content[0].type, "text")
     XCTAssertTrue(result.isError)
-  }
-
-  // MARK: - Server handles messages
-
-  func testServerInitialize() async throws {
-    let server = MCPServer()
-    let request = JSONRPCRequest(id: .integer(1), method: "initialize")
-    let response = await server.handleRequest(request)
-
-    XCTAssertNil(response.error)
-    XCTAssertNotNil(response.result)
-
-    let data = try JSONEncoder().encode(response)
-    let payload = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-    let result = payload?["result"] as? [String: Any]
-    let serverInfo = result?["serverInfo"] as? [String: Any]
-    XCTAssertEqual(serverInfo?["name"] as? String, "symmeet")
-    XCTAssertEqual(serverInfo?["version"] as? String, "0.1.0")
-  }
-
-  func testServerToolsList() async {
-    let server = MCPServer()
-    let request = JSONRPCRequest(id: .integer(2), method: "tools/list")
-    let response = await server.handleRequest(request)
-
-    XCTAssertNil(response.error)
-    XCTAssertNotNil(response.result)
-  }
-
-  func testServerPing() async {
-    let server = MCPServer()
-    let request = JSONRPCRequest(id: .integer(3), method: "ping")
-    let response = await server.handleRequest(request)
-
-    XCTAssertNil(response.error)
-    XCTAssertNotNil(response.result)
-  }
-
-  func testServerUnknownMethod() async {
-    let server = MCPServer()
-    let request = JSONRPCRequest(id: .integer(4), method: "unknown/method")
-    let response = await server.handleRequest(request)
-
-    XCTAssertNotNil(response.error)
-    XCTAssertEqual(response.error?.code, -32601)
-  }
-
-  func testServerUnknownTool() async {
-    let server = MCPServer()
-    let request = JSONRPCRequest(
-      id: .integer(5),
-      method: "tools/call",
-      params: ["name": AnyCodable("nonexistent_tool")]
-    )
-    let response = await server.handleRequest(request)
-
-    XCTAssertNotNil(response.error)
-    XCTAssertTrue(response.error?.message.contains("Unknown tool") ?? false)
-  }
-
-  func testServerMeetingListUsesInjectedTemporaryDataRoot() async throws {
-    let root = FileManager.default.temporaryDirectory
-      .appendingPathComponent("symmeet-mcp-tests-\(UUID().uuidString)", isDirectory: true)
-    defer { try? FileManager.default.removeItem(at: root) }
-
-    let server = MCPServer(dataRoot: root)
-    let request = JSONRPCRequest(
-      id: .integer(6),
-      method: "tools/call",
-      params: ["name": AnyCodable("meeting_list")]
-    )
-    let response = await server.handleRequest(request)
-
-    XCTAssertNil(response.error)
-    XCTAssertTrue(
-      FileManager.default.fileExists(atPath: root.appendingPathComponent("meetings").path),
-      "The handler must use the server's injected temporary data root"
-    )
   }
 }

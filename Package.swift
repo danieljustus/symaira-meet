@@ -17,7 +17,13 @@ let package = Package(
   dependencies: [
     .package(url: "https://github.com/apple/swift-argument-parser.git", exact: "1.8.2"),
     .package(url: "https://github.com/argmaxinc/argmax-oss-swift", exact: "1.0.0"),
-    .package(url: "https://github.com/danieljustus/symaira-appkit.git", exact: "0.7.0"),
+    // Pinned to the appkit commit that first shipped the SymairaMCP module
+    // (merged 2026-08-06, after release 0.7.0). No tagged release contains
+    // SymairaMCP yet; switch back to `exact:` once appkit publishes one.
+    .package(
+      url: "https://github.com/danieljustus/symaira-appkit.git",
+      revision: "31f4919368648de47619b6eddded720df0954f12"
+    ),
   ],
   targets: [
     .target(name: "SymMeetCore"),
@@ -28,7 +34,13 @@ let package = Package(
         .enableUpcomingFeature("ExistentialAny"),
       ]
     ),
-    .target(name: "SymMeetMCP", dependencies: ["SymMeetCore"]),
+    .target(
+      name: "SymMeetMCP",
+      dependencies: [
+        "SymMeetCore",
+        .product(name: "SymairaMCP", package: "symaira-appkit"),
+      ]
+    ),
     .target(
       name: "SymMeetSpeakerKit",
       dependencies: [
@@ -77,7 +89,13 @@ let package = Package(
       sources: ["Support/FakeTranscriptionEngine.swift", "SymMeetCoreTests"],
       resources: [.copy("Fixtures/contracts"), .copy("Fixtures/exports"), .copy("Fixtures/integration")]
     ),
-    .testTarget(name: "SymMeetMCPTests", dependencies: ["SymMeetMCP"]),
+    .testTarget(
+      name: "SymMeetMCPTests",
+      dependencies: [
+        "SymMeetMCP",
+        .product(name: "SymairaMCP", package: "symaira-appkit"),
+      ]
+    ),
     .testTarget(name: "SymMeetCLITests", dependencies: ["SymMeetCore"]),
     .testTarget(name: "SymMeetWhisperKitTests", dependencies: ["SymMeetWhisperKit"]),
     .testTarget(
