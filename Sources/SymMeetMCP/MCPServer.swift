@@ -1,11 +1,17 @@
 import Foundation
 import SymMeetCore
+import SymairaMCP
 
 // MARK: - MCP Server
 
 /// The MCP server that handles JSON-RPC 2.0 initialize/list/call lifecycle
 /// over stdio. Stdout contains only valid JSON-RPC frames; logs and
 /// diagnostics go to stderr.
+///
+/// The wire protocol, transport, and dispatch are provided by appkit's
+/// `SymairaMCP` module (`MCPServer` + `MCPStdioTransport`); this type
+/// registers the app's tool handlers on top of the typed
+/// `withMethodHandler` dispatcher and adapts their results.
 public struct MCPServer: Sendable {
   let agentBridge: AgentBridge
 
@@ -37,125 +43,93 @@ public struct MCPServer: Sendable {
     self.handlers = handlerMap
   }
 
-  // MARK: - Message loop
+  // MARK: - Server lifecycle
 
-  /// Runs the MCP server, reading JSON-RPC messages from stdin and writing
-  /// responses to stdout. Runs until stdin closes (EOF).
+  /// Runs the MCP server, reading JSON-RPC messages from the transport's
+  /// input and writing responses to its output. Runs until the input closes
+  /// (e.g. stdin EOF) or `stop()` is called.
   ///
-  /// Framing rule (MCP stdio spec): newline-delimited JSON — each line on
-  /// stdin is exactly one JSON-RPC message, so messages must not contain
-  /// embedded newlines. Responses are written by `JSONRPCWriter` as single
-  /// newline-terminated frames; stdout never carries anything but protocol
-  /// frames (logs go to stderr).
-  public func run() async {
-    JSONRPCDiagnostics.log("symmeet MCP server starting (schema \(SymMeetMCP.protocolSchemaVersion))")
-
-    while let line = readLine(strippingNewline: true) {
-      guard !line.isEmpty else { continue }
-
-      guard let data = line.data(using: .utf8) else {
-        try? JSONRPCWriter.write(
-          JSONRPCResponse(id: .null, error: .parseError))
-        continue
-      }
-
-      do {
-        let request = try JSONDecoder().decode(JSONRPCRequest.self, from: data)
-        let response = await handleRequest(request)
-        try JSONRPCWriter.write(response)
-      } catch {
-        try? JSONRPCWriter.write(
-          JSONRPCResponse(id: .null, error: .parseError))
-      }
+  /// Framing rule (MCP stdio spec): newline-delimited JSON — each message is
+  /// exactly one line. Stdout carries protocol frames only; diagnostics go
+  /// to stderr.
+  public func run(transport: any MCPTransport = MCPStdioTransport()) async throws {
+    let server = SymairaMCP.MCPServer(
+      name: "symmeet",
+      version: "0.1.0",
+      protocolVersion: "2024-11-05"
+    )
+    .withMethodHandler("tools/list") { (_: MCPNoParams) async throws -> ToolListResult in
+      ToolListResult(tools: MCPToolRegistry.tools)
+    }
+    .withMethodHandler("tools/call") {
+      (params: MCPCallToolParams) async throws -> MCPCallToolResult in
+      try await self.handleToolsCall(params)
     }
 
-    JSONRPCDiagnostics.log("symmeet MCP server shutting down")
-  }
-
-  // MARK: - Request handling
-
-  func handleRequest(_ request: JSONRPCRequest) async -> JSONRPCResponse {
-    switch request.method {
-    case "initialize":
-      return handleInitialize(request)
-    case "notifications/initialized":
-      // Notification: no response needed, but we return a response
-      // for protocol compatibility.
-      return JSONRPCResponse(id: request.id, result: AnyCodable([String: Any]()))
-    case "tools/list":
-      return handleToolsList(request)
-    case "tools/call":
-      return await handleToolsCall(request)
-    case "ping":
-      return JSONRPCResponse(id: request.id, result: AnyCodable([String: Any]()))
-    default:
-      return JSONRPCResponse(id: request.id, error: .methodNotFound)
-    }
-  }
-
-  // MARK: - Initialize
-
-  private func handleInitialize(_ request: JSONRPCRequest) -> JSONRPCResponse {
-    let result: [String: Any] = [
-      "protocolVersion": "2024-11-05",
-      "capabilities": [
-        "tools": ["listChanged": false]
-      ] as [String: Any],
-      "serverInfo": [
-        "name": "symmeet",
-        "version": "0.1.0",
-      ],
-    ]
-    return JSONRPCResponse(id: request.id, result: AnyCodable(result))
-  }
-
-  // MARK: - Tools list
-
-  private func handleToolsList(_ request: JSONRPCRequest) -> JSONRPCResponse {
-    let tools = MCPToolRegistry.tools
-    let result: [String: Any] = ["tools": tools]
-    return JSONRPCResponse(id: request.id, result: AnyCodable(result))
+    log("symmeet MCP server starting (schema \(SymMeetMCP.protocolSchemaVersion))")
+    try await server.start(transport: transport)
+    log("symmeet MCP server shutting down")
   }
 
   // MARK: - Tools call
 
-  private func handleToolsCall(_ request: JSONRPCRequest) async -> JSONRPCResponse {
-    guard let params = request.params,
-      let toolName = params["name"]?.asString
-    else {
-      return JSONRPCResponse(
-        id: request.id,
-        error: .invalidParams)
+  private func handleToolsCall(_ params: MCPCallToolParams) async throws -> MCPCallToolResult {
+    guard let handler = handlers[params.name] else {
+      throw MCPError("Unknown tool: \(params.name)")
     }
 
-    guard let handler = handlers[toolName] else {
-      return JSONRPCResponse(
-        id: request.id,
-        error: JSONRPCError.toolError("Unknown tool: \(toolName)"))
-    }
-
-    let arguments: [String: AnyCodable]
-    if let argsValue = params["arguments"] {
-      if let dict = argsValue.asDict {
-        arguments = dict.mapValues { AnyCodable($0) }
-      } else {
-        arguments = [:]
-      }
-    } else {
-      arguments = [:]
+    let arguments: [String: AnyCodable] = (params.arguments ?? [:]).mapValues { value in
+      AnyCodable(Self.anyValue(from: value))
     }
 
     do {
       let result = try await handler.execute(args: arguments)
-      let resultDict: [String: Any] = [
-        "content": result.content.map { ["type": $0.type, "text": $0.text ?? ""] },
-        "isError": result.isError,
-      ]
-      return JSONRPCResponse(id: request.id, result: AnyCodable(resultDict))
+      return MCPCallToolResult(
+        content: result.content.map { MCPTextContent(type: $0.type, text: $0.text ?? "") },
+        isError: result.isError
+      )
     } catch {
-      return JSONRPCResponse(
-        id: request.id,
-        error: JSONRPCError.toolError(error.localizedDescription))
+      throw MCPError(error.localizedDescription)
     }
   }
+
+  // MARK: - JSON value bridging
+
+  /// Converts an appkit MCP JSON value to the plain `Any` representation the
+  /// app-owned tool handlers consume. Integral numbers stay `Int` so the
+  /// handlers' `asInt` accessors keep working.
+  private static func anyValue(from value: MCPJSONValue) -> Any {
+    switch value {
+    case .null:
+      return NSNull()
+    case .bool(let bool):
+      return bool
+    case .number(let double):
+      if let int = value.intValue {
+        return Int(int)
+      }
+      return double
+    case .string(let string):
+      return string
+    case .array(let values):
+      return values.map { anyValue(from: $0) }
+    case .object(let object):
+      return object.mapValues { anyValue(from: $0) }
+    }
+  }
+}
+
+// MARK: - Tool list result
+
+/// The wire payload of `tools/list`: the app's tool schemas in their
+/// established encoding (including `input_schema` and property `default`s),
+/// unchanged by the migration.
+struct ToolListResult: Encodable, Sendable {
+  let tools: [MCPToolSchema]
+}
+
+// MARK: - Diagnostics
+
+private func log(_ message: String) {
+  FileHandle.standardError.write(Data(("[symmeet-mcp] " + message + "\n").utf8))
 }
