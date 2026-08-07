@@ -14,6 +14,7 @@ on:
       - '**.md'
       - 'LICENSE'
       - '.github/ISSUE_TEMPLATE/**'
+  workflow_dispatch: {}  # manual trigger (e.g. to re-verify after path-filtered fixes)
 
 
 concurrency:
