@@ -115,6 +115,19 @@ stable `version --json` handshake is:
 - Contract-first: integrations use versioned, snake_case JSON at runtime.
 - Privacy by design: future recording requires fresh, interactive authorization.
 
+## Compared to cloud meeting tools
+
+Cloud meeting tools (Otter, Fireflies, Granola, ...) transcribe in the vendor's
+cloud; symmeet keeps the whole pipeline on your device.
+
+| Axis | symmeet | Cloud meeting tools |
+| --- | --- | --- |
+| Local-first | Content stays on the device by default | Audio and transcripts are processed and stored in the vendor cloud |
+| Standalone-first | Artifacts are portable files you keep and re-process | Records live in a proprietary, vendor-managed database |
+| Account | None required | Account and subscription typically required |
+| Telemetry | None by design | Usage data collected by default |
+| Portability | Plain files with versioned, documented JSON contracts | Export is limited to the vendor's formats, when available |
+
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).
