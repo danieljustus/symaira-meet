@@ -8,4 +8,5 @@ Generated/
 dist/
 .worktrees/
 coverage.lcov
+.github/coverage/*.lcov
 *.profraw
